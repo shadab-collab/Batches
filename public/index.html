@@ -424,10 +424,10 @@ render();
 
 <script>
 /*
-  MongoDB API data bridge.
-  The existing UI can continue to use the `batches` array.
-  On startup, data is loaded from MongoDB.
-  Mutations are synchronized through the API.
+  MongoDB persistence + safe first-time migration.
+  Existing browser localStorage is NOT discarded.
+  If MongoDB is empty, the current browser data is uploaded first.
+  If MongoDB already has data, MongoDB remains the source of truth.
 */
 window.API_MODE = true;
 
@@ -435,39 +435,101 @@ async function loadBatchesFromServer() {
     try {
         const response = await fetch("/api/batches");
         if (!response.ok) throw new Error("API error");
+
         const data = await response.json();
 
-        if (Array.isArray(data.batches)) {
-            batches = data.batches;
-            localStorage.setItem("batchManagerData", JSON.stringify(batches));
+        /* MongoDB is empty: preserve the current browser data by migrating it. */
+        if (!Array.isArray(data.batches)) {
+            const localRaw = localStorage.getItem("batchManagerData");
+
+            if (localRaw) {
+                try {
+                    const localBatches = JSON.parse(localRaw);
+
+                    if (Array.isArray(localBatches) && localBatches.length) {
+                        batches = localBatches;
+
+                        const migrated = await saveBatchesToServer();
+
+                        if (migrated) {
+                            localStorage.setItem(
+                                "batchManagerData",
+                                JSON.stringify(batches)
+                            );
+                        }
+
+                        render();
+                        return migrated;
+                    }
+                } catch (e) {
+                    console.warn("Local migration data could not be read.", e);
+                }
+            }
+
             render();
             return true;
         }
+
+        /* MongoDB already has data: use it. */
+        batches = data.batches;
+
+        localStorage.setItem(
+            "batchManagerData",
+            JSON.stringify(batches)
+        );
+
+        render();
+        return true;
+
     } catch (error) {
-        console.warn("MongoDB API unavailable; using local data.", error);
+        console.warn(
+            "MongoDB API unavailable; using local browser data.",
+            error
+        );
+        return false;
     }
-    return false;
 }
 
 async function saveBatchesToServer() {
     try {
         const response = await fetch("/api/batches", {
             method: "PUT",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({batches})
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                batches
+            })
         });
 
-        if (!response.ok) throw new Error("Save failed");
+        if (!response.ok) {
+            throw new Error("Save failed");
+        }
 
-        localStorage.setItem("batchManagerData", JSON.stringify(batches));
+        localStorage.setItem(
+            "batchManagerData",
+            JSON.stringify(batches)
+        );
+
         return true;
+
     } catch (error) {
-        console.warn("Could not save to MongoDB API.", error);
-        localStorage.setItem("batchManagerData", JSON.stringify(batches));
+        console.warn(
+            "Could not save to MongoDB API.",
+            error
+        );
+
+        /* Keep local backup even if API is temporarily unavailable. */
+        localStorage.setItem(
+            "batchManagerData",
+            JSON.stringify(batches)
+        );
+
         return false;
     }
 }
 </script>
+
 
 <script>
 window.addEventListener("load", async () => {

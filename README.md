@@ -1,6 +1,6 @@
-# Batch Manager — MongoDB Edition
+# Batch Manager — MongoDB + Safe Migration
 
-## Render Web Service
+## Render
 
 Build Command:
 npm install
@@ -8,16 +8,18 @@ npm install
 Start Command:
 npm start
 
-## Required Environment Variable
-
-Add this in Render:
-
+Environment Variable:
 MONGODB_URI = your MongoDB Atlas connection string
 
-## Important
+## First deployment / migration
 
-The application stores the complete 10-batch structure in MongoDB.
-Student add, delete, move, and ordering changes are saved through
-/api/batches.
+The browser's existing `localStorage` data is preserved.
 
-The browser localStorage remains as a temporary fallback/cache.
+When the new app opens:
+1. It asks the server for MongoDB batch data.
+2. If MongoDB is empty, it takes the current browser's saved batch data and uploads it to MongoDB.
+3. If MongoDB already contains data, MongoDB is used as the source of truth.
+
+Do NOT clear browser site data before opening the new version if you need to migrate the current changes.
+
+After successful migration, all future Add / Delete / Move / Position / Time changes are saved to MongoDB.

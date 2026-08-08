@@ -1,7 +1,7 @@
 {
   "name": "batch-manager",
-  "version": "2.0.0",
-  "description": "Batch Manager with MongoDB persistence",
+  "version": "2.1.0",
+  "description": "Batch Manager with MongoDB persistence and safe first-time migration",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

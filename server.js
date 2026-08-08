@@ -14,28 +14,30 @@ const batchSchema = new mongoose.Schema({
     students: { type: [String], default: [] }
 }, { _id: false });
 
-const settingsSchema = new mongoose.Schema({
+const batchDataSchema = new mongoose.Schema({
     key: { type: String, unique: true, required: true },
     batches: { type: [batchSchema], default: [] }
 }, { timestamps: true });
 
-const BatchData = mongoose.model("BatchData", settingsSchema);
+const BatchData = mongoose.model("BatchData", batchDataSchema);
+
+let mongoReady = false;
 
 async function connectMongo() {
     const uri = process.env.MONGODB_URI;
 
     if (!uri) {
         console.error("MONGODB_URI is not set.");
-        return false;
+        return;
     }
 
     try {
         await mongoose.connect(uri);
+        mongoReady = true;
         console.log("MongoDB connected.");
-        return true;
     } catch (error) {
+        mongoReady = false;
         console.error("MongoDB connection failed:", error.message);
-        return false;
     }
 }
 
@@ -46,22 +48,37 @@ app.get("/", (req, res) => {
 app.get("/api/health", (req, res) => {
     res.json({
         success: true,
-        mongodb: mongoose.connection.readyState === 1,
+        mongodb: mongoReady,
         message: "Batch Manager is running"
     });
 });
 
 app.get("/api/batches", async (req, res) => {
+    if (!mongoReady) {
+        return res.status(503).json({
+            success: false,
+            message: "MongoDB is not connected"
+        });
+    }
+
     try {
-        const record = await BatchData.findOne({ key: "main" }).lean();
+        const record = await BatchData
+            .findOne({ key: "main" })
+            .lean();
 
         if (!record) {
-            return res.json({ batches: null });
+            return res.json({
+                batches: null
+            });
         }
 
-        res.json({ batches: record.batches });
+        res.json({
+            batches: record.batches
+        });
+
     } catch (error) {
         console.error(error);
+
         res.status(500).json({
             success: false,
             message: "Could not load batches"
@@ -70,6 +87,13 @@ app.get("/api/batches", async (req, res) => {
 });
 
 app.put("/api/batches", async (req, res) => {
+    if (!mongoReady) {
+        return res.status(503).json({
+            success: false,
+            message: "MongoDB is not connected"
+        });
+    }
+
     try {
         const { batches } = req.body;
 
@@ -99,8 +123,10 @@ app.put("/api/batches", async (req, res) => {
             success: true,
             batches: saved.batches
         });
+
     } catch (error) {
         console.error(error);
+
         res.status(500).json({
             success: false,
             message: "Could not save batches"
