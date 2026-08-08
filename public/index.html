@@ -155,6 +155,190 @@ button{
     .student{font-size:17px;padding:7px 2px}
     .batch-time{font-size:22px}
 }
+
+/* =====================================================
+   CLEAR TOUCH AREAS
+===================================================== */
+
+.batch{
+    position:relative;
+}
+
+.batch-head{
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+}
+
+.batch-head::after{
+    content:"⚙ 管理此 Batch";
+    display:block;
+    margin-top:6px;
+    font-size:11px;
+    font-weight:500;
+    color:#777;
+}
+
+.student{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    min-height:50px;
+    padding:5px 3px;
+}
+
+.student-name{
+    flex:1;
+    min-height:42px;
+    padding:9px 12px;
+    background:#f7f9fc;
+    border:1px solid #dfe5ec;
+    border-radius:9px;
+    color:#1769aa;
+    font-size:17px;
+    font-weight:500;
+    text-align:left;
+    text-decoration:none;
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+}
+
+.student-name::after{
+    content:"  ›";
+    color:#999;
+    font-size:20px;
+}
+
+.student-name:active{
+    background:#eaf2fb;
+    transform:scale(.99);
+}
+
+.batch-touch-label{
+    padding:8px 10px;
+    text-align:center;
+    color:#777;
+    background:#fafafa;
+    border-top:1px solid #eee;
+    font-size:11px;
+}
+
+/* =====================================================
+   STUDENT PROFILE PAGE
+===================================================== */
+
+#studentProfilePage{
+    display:none;
+    min-height:100vh;
+    background:#f3f5f8;
+}
+
+.student-profile-topbar{
+    height:58px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:0 13px;
+    background:#fff;
+    border-bottom:1px solid #ddd;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.student-profile-back{
+    border:0;
+    background:#eef1f5;
+    color:#222;
+    border-radius:8px;
+    padding:9px 13px;
+    font-size:15px;
+}
+
+.student-profile-heading{
+    font-size:19px;
+    font-weight:700;
+}
+
+.student-profile-wrap{
+    max-width:650px;
+    margin:0 auto;
+    padding:18px 14px 35px;
+}
+
+.student-profile-card{
+    background:#fff;
+    border:1px solid #ddd;
+    border-radius:15px;
+    overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+
+.student-profile-name{
+    padding:25px 16px;
+    text-align:center;
+    background:#e9eef5;
+}
+
+.student-profile-name strong{
+    display:block;
+    font-size:25px;
+}
+
+.student-profile-name span{
+    display:block;
+    margin-top:5px;
+    color:#777;
+    font-size:12px;
+}
+
+.student-profile-info{
+    padding:5px 17px 12px;
+}
+
+.student-profile-info-row{
+    display:flex;
+    justify-content:space-between;
+    gap:15px;
+    padding:14px 0;
+    border-bottom:1px solid #eee;
+}
+
+.student-profile-info-row:last-child{
+    border-bottom:0;
+}
+
+.student-profile-info-label{
+    color:#777;
+}
+
+.student-profile-info-value{
+    font-weight:600;
+    text-align:right;
+}
+
+.student-profile-section{
+    margin-top:16px;
+    background:#fff;
+    border:1px solid #ddd;
+    border-radius:15px;
+    overflow:hidden;
+}
+
+.student-profile-section-title{
+    padding:15px 16px;
+    font-size:17px;
+    font-weight:700;
+    border-bottom:1px solid #eee;
+}
+
+.student-profile-section-body{
+    padding:20px 16px;
+    text-align:center;
+    color:#888;
+    font-size:14px;
+}
+
 </style>
 </head>
 <body>
@@ -197,6 +381,81 @@ button{
 </div>
 
 <div class="overlay" id="profileOverlay"><div class="modal"><h2>Student Profile</h2><div class="field"><label>Student Name</label><input id="profileStudentName" type="text"></div><div class="field"><label>Batch</label><input id="profileBatch" type="text" disabled></div><div class="field"><label>Time</label><input id="profileTime" type="text" disabled></div><div class="field"><label>Position</label><input id="profilePosition" type="text" disabled></div><div class="actions"><button class="btn-main" onclick="saveStudentProfile()">Save</button><button class="btn-light" onclick="closeStudentProfile()">Close</button></div></div></div>
+
+
+<!-- =====================================================
+     STUDENT PROFILE PAGE
+===================================================== -->
+
+<div id="studentProfilePage">
+
+    <div class="student-profile-topbar">
+        <button
+            class="student-profile-back"
+            onclick="closeStudentProfilePage()"
+        >
+            ← Back
+        </button>
+
+        <div class="student-profile-heading">
+            Student Profile
+        </div>
+    </div>
+
+    <div class="student-profile-wrap">
+
+        <div class="student-profile-card">
+
+            <div class="student-profile-name">
+                <strong id="pageStudentName">Student</strong>
+                <span>Student Profile</span>
+            </div>
+
+            <div class="student-profile-info">
+
+                <div class="student-profile-info-row">
+                    <div class="student-profile-info-label">Batch</div>
+                    <div
+                        id="pageStudentBatch"
+                        class="student-profile-info-value"
+                    >-</div>
+                </div>
+
+                <div class="student-profile-info-row">
+                    <div class="student-profile-info-label">Time</div>
+                    <div
+                        id="pageStudentTime"
+                        class="student-profile-info-value"
+                    >-</div>
+                </div>
+
+                <div class="student-profile-info-row">
+                    <div class="student-profile-info-label">Position</div>
+                    <div
+                        id="pageStudentPosition"
+                        class="student-profile-info-value"
+                    >-</div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="student-profile-section">
+
+            <div class="student-profile-section-title">
+                Student Profile
+            </div>
+
+            <div class="student-profile-section-body">
+                Student profile details यहाँ आगे जोड़े जाएंगे।
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
 <script>
 const defaultBatches = [
@@ -273,6 +532,7 @@ function render(){
                 <div class="batch-time">${formatTime(batch.time)}</div>
             </div>
             <div class="students">${students}</div>
+<div class="batch-touch-label">Batch header → Manage &nbsp; | &nbsp; Student name → Profile</div>
         `;
         grid.appendChild(box);
     });
@@ -536,5 +796,17 @@ window.addEventListener("load", async () => {
     await loadBatchesFromServer();
 });
 </script>
-</body>
+<script>function closeStudentProfilePage(){
+
+    const page = document.getElementById("studentProfilePage");
+    if (page) page.style.display = "none";
+
+    const header = document.querySelector(".header");
+    const grid = document.getElementById("batchGrid");
+
+    if (header) header.style.display = "";
+    if (grid) grid.style.display = "";
+
+    window.scrollTo(0, 0);
+}</script></body>
 </html>
