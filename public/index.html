@@ -6,807 +6,245 @@
 <title>Batch Manager</title>
 <style>
 *{box-sizing:border-box}
-body{
-    margin:0;
-    font-family:Arial,sans-serif;
-    background:#f3f4f6;
-    color:#222;
-}
-.header{
-    background:#fff;
-    padding:14px 16px;
-    text-align:center;
-    font-size:22px;
-    font-weight:700;
-    border-bottom:1px solid #ddd;
-}
-.batch-grid{
-    display:grid;
-    grid-template-columns:repeat(5,minmax(135px,1fr));
-    gap:12px;
-    padding:14px;
-    max-width:1400px;
-    margin:auto;
-    overflow-x:auto;
-}
-.batch{
-    background:#fff;
-    border:1px solid #d7d7d7;
-    border-radius:10px;
-    min-height:300px;
-    overflow:hidden;
-    cursor:pointer;
-    transition:.15s;
-}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#222}
+.header{background:#fff;padding:14px 16px;text-align:center;font-size:22px;font-weight:700;border-bottom:1px solid #ddd}
+.batch-grid{display:grid;grid-template-columns:repeat(5,minmax(135px,1fr));gap:12px;padding:14px;max-width:1400px;margin:auto;overflow-x:auto}
+.batch{background:#fff;border:1px solid #d7d7d7;border-radius:10px;min-height:300px;overflow:hidden;cursor:pointer;transition:.15s}
 .batch:active{transform:scale(.98)}
-.batch-head{
-    background:#e9eef5;
-    padding:12px 7px;
-    text-align:center;
-    border-bottom:1px solid #d5d9df;
-}
-.batch-name{
-    font-size:14px;
-    color:#555;
-}
-.batch-time{
-    font-size:23px;
-    font-weight:700;
-    margin-top:3px;
-    white-space:nowrap;
-}
-.students{
-    padding:8px 7px;
-}
-.student{
-    padding:7px 2px;
-    border-bottom:1px solid #eee;
-    font-size:17px;
-    line-height:1.25;
-    overflow-wrap:anywhere;
-}
-.student:last-child{border-bottom:0}
-.serial{
-    display:inline-block;
-    min-width:25px;
-    font-weight:600;
-    color:#666;
-}
-.serial-manage{width:28px;font-weight:600;color:#666}
-.empty{
-    color:#aaa;
-    text-align:center;
-    padding:45px 5px;
-    font-size:15px;
-}
-.overlay{
-    display:none;
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,.45);
-    z-index:10;
-    align-items:flex-end;
-    justify-content:center;
-}
-.modal{
-    width:100%;
-    max-width:550px;
-    background:#fff;
-    border-radius:18px 18px 0 0;
-    padding:18px;
-    max-height:90vh;
-    overflow:auto;
-}
-.modal h2{margin:0 0 15px;font-size:20px}
-.field{margin-bottom:14px}
-.field label{
-    display:block;
-    font-size:13px;
-    color:#666;
-    margin-bottom:5px;
-}
-input,select{
-    width:100%;
-    padding:11px;
-    border:1px solid #ccc;
-    border-radius:8px;
-    font-size:15px;
-}
-.row{display:flex;gap:8px}
-.row>*{flex:1}
-button{
-    border:0;
-    border-radius:8px;
-    padding:11px 14px;
-    font-size:15px;
-    cursor:pointer;
-}
-.btn-main{background:#1f2937;color:#fff}
-.btn-light{background:#e5e7eb}
-.btn-danger{background:#dc2626;color:#fff}
-.btn-green{background:#16803c;color:#fff}
-.actions{display:flex;gap:8px;margin-top:15px}
-.actions button{flex:1}
-
-.student-name,.manage-student-name{background:none;border:0;color:#1769aa;text-decoration:underline;cursor:pointer;padding:0;margin:0;text-align:left;border-radius:0}
-.student-name{font-size:17px}.manage-student-name{flex:1;font-size:15px}
+.batch-head{background:#e9eef5;padding:12px 7px;text-align:center;border-bottom:1px solid #d5d9df}
+.batch-name{font-size:14px;color:#555}.batch-time{font-size:23px;font-weight:700;margin-top:3px;white-space:nowrap}
+.students{padding:8px 7px}.student{padding:7px 2px;border-bottom:1px solid #eee;font-size:17px;line-height:1.25;overflow-wrap:anywhere}.student:last-child{border-bottom:0}
+.serial{display:inline-block;min-width:25px;font-weight:600;color:#666}.serial-manage{width:28px;font-weight:600;color:#666}
+.empty{color:#aaa;text-align:center;padding:45px 5px;font-size:15px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10;align-items:flex-end;justify-content:center}
+.modal{width:100%;max-width:550px;background:#fff;border-radius:18px 18px 0 0;padding:18px;max-height:90vh;overflow:auto}
+.modal h2{margin:0 0 15px;font-size:20px}.field{margin-bottom:14px}.field label{display:block;font-size:13px;color:#666;margin-bottom:5px}
+input,select{width:100%;padding:11px;border:1px solid #ccc;border-radius:8px;font-size:15px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+button{border:0;border-radius:8px;padding:11px 14px;font-size:15px;cursor:pointer}
+.btn-main{background:#1f2937;color:#fff}.btn-light{background:#e5e7eb}.btn-danger{background:#dc2626;color:#fff}.btn-green{background:#16803c;color:#fff}
+.actions{display:flex;gap:8px;margin-top:15px}.actions button{flex:1}
+.student-name,.manage-student-name{background:none;border:0;color:inherit;text-decoration:none;cursor:pointer;padding:0;margin:0;text-align:left;border-radius:0}
+.student-name{font-size:17px}.manage-student-name{flex:1;font-size:15px;color:#1769aa;text-decoration:underline}
 .small-btn:disabled{opacity:.35;cursor:not-allowed}
+.student-row{display:flex;align-items:center;gap:7px;padding:8px 0;border-bottom:1px solid #eee}
+.student-row .name{flex:1;font-size:15px}.small-btn{padding:6px 9px;font-size:13px}.note{font-size:12px;color:#777;margin-top:8px}
+@media(max-width:800px){.batch-grid{grid-template-columns:repeat(5,145px);gap:10px;padding:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}.batch{min-height:300px}.student{font-size:17px;padding:7px 2px}.batch-time{font-size:22px}}
+.batch{position:relative}.batch-head{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.batch-head::after{content:"⚙ Manage Batch";display:block;margin-top:6px;font-size:11px;font-weight:500;color:#777}
+.student{display:flex;align-items:center;gap:7px;min-height:40px;padding:5px 3px}
+.student-name{flex:1;min-height:32px;color:#222;font-size:17px;font-weight:400;text-align:left;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.student-name:active{background:#f0f0f0}
 
-.student-row{
-    display:flex;
-    align-items:center;
-    gap:7px;
-    padding:8px 0;
-    border-bottom:1px solid #eee;
-}
-.student-row .name{flex:1;font-size:15px}
-.small-btn{padding:6px 9px;font-size:13px}
-.note{font-size:12px;color:#777;margin-top:8px}
 
-@media(max-width:800px){
-    .batch-grid{
-        grid-template-columns:repeat(5,145px);
-        gap:10px;
-        padding:12px;
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-    }
-    .batch{min-height:300px}
-    .student{font-size:17px;padding:7px 2px}
-    .batch-time{font-size:22px}
-}
-
-/* =====================================================
-   CLEAR TOUCH AREAS
-===================================================== */
-
-.batch{
-    position:relative;
-}
-
-.batch-head{
-    cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-    user-select:none;
-}
-
-.batch-head::after{
-    content:"⚙ 管理此 Batch";
-    display:block;
-    margin-top:6px;
-    font-size:11px;
-    font-weight:500;
-    color:#777;
-}
-
-.student{
-    display:flex;
-    align-items:center;
-    gap:7px;
-    min-height:50px;
-    padding:5px 3px;
-}
-
-.student-name{
-    flex:1;
-    min-height:42px;
-    padding:9px 12px;
-    background:#f7f9fc;
-    border:1px solid #dfe5ec;
-    border-radius:9px;
-    color:#1769aa;
-    font-size:17px;
-    font-weight:500;
-    text-align:left;
-    text-decoration:none;
-    cursor:pointer;
-    -webkit-tap-highlight-color:transparent;
-}
-
-.student-name::after{
-    content:"  ›";
-    color:#999;
-    font-size:20px;
-}
-
-.student-name:active{
-    background:#eaf2fb;
-    transform:scale(.99);
-}
-
-.batch-touch-label{
-    padding:8px 10px;
-    text-align:center;
-    color:#777;
-    background:#fafafa;
-    border-top:1px solid #eee;
-    font-size:11px;
-}
-
-/* =====================================================
-   STUDENT PROFILE PAGE
-===================================================== */
-
-#studentProfilePage{
-    display:none;
-    min-height:100vh;
-    background:#f3f5f8;
-}
-
-.student-profile-topbar{
-    height:58px;
-    display:flex;
-    align-items:center;
-    gap:10px;
-    padding:0 13px;
-    background:#fff;
-    border-bottom:1px solid #ddd;
-    position:sticky;
-    top:0;
-    z-index:10;
-}
-
-.student-profile-back{
-    border:0;
-    background:#eef1f5;
-    color:#222;
-    border-radius:8px;
-    padding:9px 13px;
-    font-size:15px;
-}
-
-.student-profile-heading{
-    font-size:19px;
-    font-weight:700;
-}
-
-.student-profile-wrap{
-    max-width:650px;
-    margin:0 auto;
-    padding:18px 14px 35px;
-}
-
-.student-profile-card{
-    background:#fff;
-    border:1px solid #ddd;
-    border-radius:15px;
-    overflow:hidden;
-    box-shadow:0 2px 8px rgba(0,0,0,.05);
-}
-
-.student-profile-name{
-    padding:25px 16px;
-    text-align:center;
-    background:#e9eef5;
-}
-
-.student-profile-name strong{
-    display:block;
-    font-size:25px;
-}
-
-.student-profile-name span{
-    display:block;
-    margin-top:5px;
-    color:#777;
-    font-size:12px;
-}
-
-.student-profile-info{
-    padding:5px 17px 12px;
-}
-
-.student-profile-info-row{
-    display:flex;
-    justify-content:space-between;
-    gap:15px;
-    padding:14px 0;
-    border-bottom:1px solid #eee;
-}
-
-.student-profile-info-row:last-child{
-    border-bottom:0;
-}
-
-.student-profile-info-label{
-    color:#777;
-}
-
-.student-profile-info-value{
-    font-weight:600;
-    text-align:right;
-}
-
-.student-profile-section{
-    margin-top:16px;
-    background:#fff;
-    border:1px solid #ddd;
-    border-radius:15px;
-    overflow:hidden;
-}
-
-.student-profile-section-title{
-    padding:15px 16px;
-    font-size:17px;
-    font-weight:700;
-    border-bottom:1px solid #eee;
-}
-
-.student-profile-section-body{
-    padding:20px 16px;
-    text-align:center;
-    color:#888;
-    font-size:14px;
-}
-
+/* Separate Student Profile page */
+#studentProfilePage{display:none;min-height:100vh;background:#f3f5f8}
+.student-profile-topbar{height:58px;display:flex;align-items:center;gap:10px;padding:0 13px;background:#fff;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:10}
+.student-profile-back{border:0;background:#eef1f5;color:#222;border-radius:8px;padding:9px 13px;font-size:15px}
+.student-profile-heading{font-size:19px;font-weight:700}
+.student-profile-wrap{max-width:650px;margin:0 auto;padding:18px 14px 35px}
+.student-profile-card{background:#fff;border:1px solid #ddd;border-radius:15px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.student-profile-name{padding:25px 16px;text-align:center;background:#e9eef5}
+.student-profile-name strong{display:block;font-size:25px}.student-profile-name span{display:block;margin-top:5px;color:#777;font-size:12px}
+.student-profile-info{padding:5px 17px 12px}.student-profile-info-row{display:flex;justify-content:space-between;gap:15px;padding:14px 0;border-bottom:1px solid #eee}
+.student-profile-info-row:last-child{border-bottom:0}.student-profile-info-label{color:#777}.student-profile-info-value{font-weight:600;text-align:right}
+.student-profile-section{margin-top:16px;background:#fff;border:1px solid #ddd;border-radius:15px;overflow:hidden}
+.student-profile-section-title{padding:15px 16px;font-size:17px;font-weight:700;border-bottom:1px solid #eee}
+.student-profile-section-body{padding:20px 16px;text-align:center;color:#888;font-size:14px}
 </style>
 </head>
 <body>
 
 <div class="header">Batch Manager</div>
-
 <div class="batch-grid" id="batchGrid"></div>
 
 <div class="overlay" id="overlay">
     <div class="modal">
         <h2 id="modalTitle">Batch Manage</h2>
-
-        <div class="field">
-            <label>Batch Name</label>
-            <input id="batchName" type="text">
-        </div>
-
-        <div class="field">
-            <label>Time</label>
-            <input id="batchTime" type="time">
-        </div>
-
-        <div class="field">
-            <label>Students</label>
-            <div id="studentList"></div>
-        </div>
-
-        <div class="row">
-            <input id="newStudent" type="text" placeholder="Student का नाम">
-            <button class="btn-green" onclick="addStudent()">+ Add</button>
-        </div>
-
+        <div class="field"><label>Batch Name</label><input id="batchName" type="text"></div>
+        <div class="field"><label>Time</label><input id="batchTime" type="time"></div>
+        <div class="field"><label>Students</label><div id="studentList"></div></div>
+        <div class="row"><input id="newStudent" type="text" placeholder="Student का नाम"><button class="btn-green" onclick="addStudent()">+ Add</button></div>
         <div class="note">Student के सामने Move से दूसरे Batch में भेज सकते हैं।</div>
-
-        <div class="actions">
-            <button class="btn-main" onclick="saveBatch()">Save</button>
-            <button class="btn-light" onclick="closeModal()">Close</button>
-        </div>
+        <div class="actions"><button class="btn-main" onclick="saveBatch()">Save</button><button class="btn-light" onclick="closeModal()">Close</button></div>
     </div>
 </div>
 
-<div class="overlay" id="profileOverlay"><div class="modal"><h2>Student Profile</h2><div class="field"><label>Student Name</label><input id="profileStudentName" type="text"></div><div class="field"><label>Batch</label><input id="profileBatch" type="text" disabled></div><div class="field"><label>Time</label><input id="profileTime" type="text" disabled></div><div class="field"><label>Position</label><input id="profilePosition" type="text" disabled></div><div class="actions"><button class="btn-main" onclick="saveStudentProfile()">Save</button><button class="btn-light" onclick="closeStudentProfile()">Close</button></div></div></div>
-
-
-<!-- =====================================================
-     STUDENT PROFILE PAGE
-===================================================== -->
+<div class="overlay" id="profileOverlay">
+    <div class="modal">
+        <h2>Student Profile</h2>
+        <div class="field"><label>Student Name</label><input id="profileStudentName" type="text"></div>
+        <div class="field"><label>Batch</label><input id="profileBatch" type="text" disabled></div>
+        <div class="field"><label>Time</label><input id="profileTime" type="text" disabled></div>
+        <div class="field"><label>Position</label><input id="profilePosition" type="text" disabled></div>
+        <div class="actions"><button class="btn-main" onclick="saveStudentProfile()">Save</button><button class="btn-light" onclick="closeStudentProfile()">Close</button></div>
+    </div>
+</div>
 
 <div id="studentProfilePage">
-
     <div class="student-profile-topbar">
-        <button
-            class="student-profile-back"
-            onclick="closeStudentProfilePage()"
-        >
-            ← Back
-        </button>
-
-        <div class="student-profile-heading">
-            Student Profile
-        </div>
+        <button class="student-profile-back" onclick="closeStudentProfilePage()">← Back</button>
+        <div class="student-profile-heading">Student Profile</div>
     </div>
-
     <div class="student-profile-wrap">
-
         <div class="student-profile-card">
-
             <div class="student-profile-name">
                 <strong id="pageStudentName">Student</strong>
                 <span>Student Profile</span>
             </div>
-
             <div class="student-profile-info">
-
-                <div class="student-profile-info-row">
-                    <div class="student-profile-info-label">Batch</div>
-                    <div
-                        id="pageStudentBatch"
-                        class="student-profile-info-value"
-                    >-</div>
-                </div>
-
-                <div class="student-profile-info-row">
-                    <div class="student-profile-info-label">Time</div>
-                    <div
-                        id="pageStudentTime"
-                        class="student-profile-info-value"
-                    >-</div>
-                </div>
-
-                <div class="student-profile-info-row">
-                    <div class="student-profile-info-label">Position</div>
-                    <div
-                        id="pageStudentPosition"
-                        class="student-profile-info-value"
-                    >-</div>
-                </div>
-
+                <div class="student-profile-info-row"><div class="student-profile-info-label">Batch</div><div id="pageStudentBatch" class="student-profile-info-value">-</div></div>
+                <div class="student-profile-info-row"><div class="student-profile-info-label">Time</div><div id="pageStudentTime" class="student-profile-info-value">-</div></div>
+                <div class="student-profile-info-row"><div class="student-profile-info-label">Position</div><div id="pageStudentPosition" class="student-profile-info-value">-</div></div>
             </div>
-
         </div>
-
         <div class="student-profile-section">
-
-            <div class="student-profile-section-title">
-                Student Profile
-            </div>
-
-            <div class="student-profile-section-body">
-                Student profile details यहाँ आगे जोड़े जाएंगे।
-            </div>
-
+            <div class="student-profile-section-title">Student Profile</div>
+            <div class="student-profile-section-body">Student profile details यहाँ आगे जोड़े जाएंगे।</div>
         </div>
-
     </div>
-
 </div>
 
 <script>
 const defaultBatches = [
-    {name:"Batch 1", time:"", students:[]},
-    {name:"Batch 2", time:"", students:[]},
-    {name:"Batch 3", time:"", students:[]},
-    {name:"Batch 4", time:"", students:[]},
-    {name:"Batch 5", time:"", students:[]},
-
-    {name:"Batch 6", time:"14:30", students:[
-        "Sana","Yusra","Sidra","Sarim","Sariha","Ryaan","Zishan","Arif",
-        "Aaquib","Saif","Saad","Aasifa","Affan","Almas"
-    ]},
-    {name:"Batch 7", time:"15:30", students:[
-        "Atif","Kasif","asad","Sajid","Wajid","Ayaan","Ayaan","fatima",
-        "Zohra","Eeram","piyush","Zaid"
-    ]},
-    {name:"Batch 8", time:"16:30", students:[
-        "Imran","Sumaiya","Sohail","Arshad","Kasif","Abhiraaz","Arisfa",
-        "Misty","Rishiraaz","Arham","Talib","Tausif","GuFran","Neha","Khadija"
-    ]},
-    {name:"Batch 9", time:"17:30", students:[
-        "Surbhi","Minsa","Sadiya","Saif","Mariya","Yusuf","Rehan","Adil",
-        "Zikra","Sayra","Samya","Nurfiya","Aamna","Ruhani"
-    ]},
-    {name:"Batch 10", time:"18:30", students:[
-        "Yusuf","Alsaba","Atif","Harish","Arfa","Ayaan","Almas","Salman",
-        "Aman","Aadil","Raunak","Raushan","Arshalan","Samreen","Mahreen"
-    ]}
+    {name:"Batch 1",time:"",students:[]},{name:"Batch 2",time:"",students:[]},{name:"Batch 3",time:"",students:[]},{name:"Batch 4",time:"",students:[]},{name:"Batch 5",time:"",students:[]},
+    {name:"Batch 6",time:"14:30",students:["Sana","Yusra","Sidra","Sarim","Sariha","Ryaan","Zishan","Arif","Aaquib","Saif","Saad","Aasifa","Affan","Almas"]},
+    {name:"Batch 7",time:"15:30",students:["Atif","Kasif","asad","Sajid","Wajid","Ayaan","Ayaan","fatima","Zohra","Eeram","piyush","Zaid"]},
+    {name:"Batch 8",time:"16:30",students:["Imran","Sumaiya","Sohail","Arshad","Kasif","Abhiraaz","Arisfa","Misty","Rishiraaz","Arham","Talib","Tausif","GuFran","Neha","Khadija"]},
+    {name:"Batch 9",time:"17:30",students:["Surbhi","Minsa","Sadiya","Saif","Mariya","Yusuf","Rehan","Adil","Zikra","Sayra","Samya","Nurfiya","Aamna","Ruhani"]},
+    {name:"Batch 10",time:"18:30",students:["Yusuf","Alsaba","Atif","Harish","Arfa","Ayaan","Almas","Salman","Aman","Aadil","Raunak","Raushan","Arshalan","Samreen","Mahreen"]}
 ];
 
 const DATA_VERSION = "2";
 let batches;
 if(localStorage.getItem("batchManagerDataVersion") !== DATA_VERSION){
-    batches = defaultBatches;
-    localStorage.setItem("batchManagerDataVersion", DATA_VERSION);
-    localStorage.setItem("batchManagerData", JSON.stringify(batches));
+    batches=defaultBatches;
+    localStorage.setItem("batchManagerDataVersion",DATA_VERSION);
+    localStorage.setItem("batchManagerData",JSON.stringify(batches));
 }else{
-    batches = JSON.parse(localStorage.getItem("batchManagerData")) || defaultBatches;
+    batches=JSON.parse(localStorage.getItem("batchManagerData"))||defaultBatches;
 }
-let currentBatch = null;
+let currentBatch=null;
 
 function saveData(){
-    localStorage.setItem("batchManagerData", JSON.stringify(batches));
+    localStorage.setItem("batchManagerData",JSON.stringify(batches));
+    if(window.API_MODE&&typeof saveBatchesToServer==="function") saveBatchesToServer();
 }
-
 function formatTime(t){
-    if(!t) return "Time Set";
-    const [h,m] = t.split(":");
-    let hour = Number(h);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    hour = hour % 12 || 12;
-    return `${hour}:${m} ${ampm}`;
+    if(!t)return "Time Set";
+    const [h,m]=t.split(":");let hour=Number(h);const ampm=hour>=12?"PM":"AM";hour=hour%12||12;return `${hour}:${m} ${ampm}`;
 }
-
 function render(){
-    const grid = document.getElementById("batchGrid");
-    grid.innerHTML = "";
-
+    const grid=document.getElementById("batchGrid");grid.innerHTML="";
     batches.forEach((batch,index)=>{
-        const box = document.createElement("div");
-        box.className = "batch";
-        box.onclick = ()=>openBatch(index);
-
-        let students = batch.students.map((s,i) =>
-            `<div class="student"><span class="serial">${i+1}.</span> <button class="student-name" onclick="event.stopPropagation();openStudentProfile(${index},${i})">${escapeHtml(s)}</button></div>`
-        ).join("");
-
-        if(!students) students = `<div class="empty">कोई Student नहीं</div>`;
-
-        box.innerHTML = `
-            <div class="batch-head">
-                <div class="batch-name">${escapeHtml(batch.name)}</div>
-                <div class="batch-time">${formatTime(batch.time)}</div>
-            </div>
-            <div class="students">${students}</div>
-<div class="batch-touch-label">Batch header → Manage &nbsp; | &nbsp; Student name → Profile</div>
-        `;
+        const box=document.createElement("div");box.className="batch";box.onclick=()=>openBatch(index);
+        let students=batch.students.map((s,i)=>`<div class="student"><span class="serial">${i+1}.</span><button class="student-name" onclick="event.stopPropagation();openStudentProfile(${index},${i})">${escapeHtml(s)}</button></div>`).join("");
+        if(!students)students=`<div class="empty">कोई Student नहीं</div>`;
+        box.innerHTML=`<div class="batch-head"><div class="batch-name">${escapeHtml(batch.name)}</div><div class="batch-time">${formatTime(batch.time)}</div></div><div class="students">${students}</div>`;
         grid.appendChild(box);
     });
 }
-
 function openBatch(index){
-    currentBatch = index;
-    const b = batches[index];
-
-    document.getElementById("modalTitle").textContent = b.name + " Manage";
-    document.getElementById("batchName").value = b.name;
-    document.getElementById("batchTime").value = b.time;
-    document.getElementById("newStudent").value = "";
-
-    renderStudents();
-    document.getElementById("overlay").style.display = "flex";
+    currentBatch=index;const b=batches[index];
+    document.getElementById("modalTitle").textContent=b.name+" Manage";
+    document.getElementById("batchName").value=b.name;
+    document.getElementById("batchTime").value=b.time;
+    document.getElementById("newStudent").value="";
+    renderStudents();document.getElementById("overlay").style.display="flex";
 }
-
-function closeModal(){
-    document.getElementById("overlay").style.display = "none";
-    currentBatch = null;
-    render();
-}
-
+function closeModal(){document.getElementById("overlay").style.display="none";currentBatch=null;render();}
 function saveBatch(){
-    if(currentBatch === null) return;
-
-    const name = document.getElementById("batchName").value.trim();
-    const time = document.getElementById("batchTime").value;
-
-    if(name) batches[currentBatch].name = name;
-    batches[currentBatch].time = time;
-
-    saveData();
-    closeModal();
+    if(currentBatch===null)return;
+    const name=document.getElementById("batchName").value.trim(),time=document.getElementById("batchTime").value;
+    if(name)batches[currentBatch].name=name;batches[currentBatch].time=time;saveData();closeModal();
 }
-
 function addStudent(){
-    if(currentBatch === null) return;
-
-    const input = document.getElementById("newStudent");
-    const name = input.value.trim();
-
-    if(!name) return;
-
-    batches[currentBatch].students.push(name);
-    input.value = "";
-
-    saveData();
-    renderStudents();
-    render();
+    if(currentBatch===null)return;
+    const input=document.getElementById("newStudent"),name=input.value.trim();if(!name)return;
+    batches[currentBatch].students.push(name);input.value="";saveData();renderStudents();render();
 }
-
 function deleteStudent(index){
-    if(currentBatch === null) return;
-
-    batches[currentBatch].students.splice(index,1);
-    saveData();
-    renderStudents();
-    render();
+    if(currentBatch===null)return;
+    batches[currentBatch].students.splice(index,1);saveData();renderStudents();render();
 }
-
 function moveStudent(index){
-    if(currentBatch === null) return;
-
-    const student = batches[currentBatch].students[index];
-
-    let html = `<option value="">Batch चुनें</option>`;
-    batches.forEach((b,i)=>{
-        if(i !== currentBatch){
-            html += `<option value="${i}">${escapeHtml(b.name)} — ${formatTime(b.time)}</option>`;
-        }
-    });
-
-    const target = prompt(
-        `Student: ${student}\n\nकिस Batch में Move करना है?\n\n` +
-        batches.map((b,i)=> i===currentBatch ? "" : `${i+1}. ${b.name} — ${formatTime(b.time)}`).filter(Boolean).join("\n") +
-        `\n\nBatch number लिखें (1-10):`
-    );
-
-    if(target === null) return;
-
-    const targetIndex = Number(target)-1;
-
-    if(
-        !Number.isInteger(targetIndex) ||
-        targetIndex < 0 ||
-        targetIndex >= batches.length ||
-        targetIndex === currentBatch
-    ){
-        alert("सही Batch number चुनें।");
-        return;
-    }
-
-    batches[targetIndex].students.push(student);
-    batches[currentBatch].students.splice(index,1);
-
-    saveData();
-    renderStudents();
-    render();
+    if(currentBatch===null)return;
+    const student=batches[currentBatch].students[index];
+    const target=prompt(`Student: ${student}\n\nकिस Batch में Move करना है?\n\n`+batches.map((b,i)=>i===currentBatch?"":`${i+1}. ${b.name} — ${formatTime(b.time)}`).filter(Boolean).join("\n")+`\n\nBatch number लिखें (1-10):`);
+    if(target===null)return;
+    const targetIndex=Number(target)-1;
+    if(!Number.isInteger(targetIndex)||targetIndex<0||targetIndex>=batches.length||targetIndex===currentBatch){alert("सही Batch number चुनें।");return;}
+    batches[targetIndex].students.push(student);batches[currentBatch].students.splice(index,1);saveData();renderStudents();render();
 }
-
 function renderStudents(){
-    const list = document.getElementById("studentList");
-    const students = batches[currentBatch].students;
-
-    if(!students.length){
-        list.innerHTML = `<div class="empty">कोई Student नहीं</div>`;
-        return;
-    }
-
-    list.innerHTML = students.map((s,i)=>`
-        <div class="student-row">
-            <div class="serial-manage">${i+1}.</div>
-            <button class="manage-student-name" onclick="openStudentProfile(${currentBatch},${i})">${escapeHtml(s)}</button>
-            <button class="small-btn btn-light" onclick="moveUp(${i})" ${i===0?'disabled':''}>↑</button>
-            <button class="small-btn btn-light" onclick="moveDown(${i})" ${i===students.length-1?'disabled':''}>↓</button>
-            <button class="small-btn btn-main" onclick="moveStudent(${i})">Move</button>
-            <button class="small-btn btn-danger" onclick="deleteStudent(${i})">Delete</button>
-        </div>
-    `).join("");
+    const list=document.getElementById("studentList"),students=batches[currentBatch].students;
+    if(!students.length){list.innerHTML=`<div class="empty">कोई Student नहीं</div>`;return;}
+    list.innerHTML=students.map((s,i)=>`<div class="student-row"><div class="serial-manage">${i+1}.</div><button class="manage-student-name" onclick="openStudentProfile(${currentBatch},${i})">${escapeHtml(s)}</button><button class="small-btn btn-light" onclick="moveUp(${i})" ${i===0?'disabled':''}>↑</button><button class="small-btn btn-light" onclick="moveDown(${i})" ${i===students.length-1?'disabled':''}>↓</button><button class="small-btn btn-main" onclick="moveStudent(${i})">Move</button><button class="small-btn btn-danger" onclick="deleteStudent(${i})">Delete</button></div>`).join("");
 }
-
-
 function moveUp(index){if(currentBatch===null||index<=0)return;const a=batches[currentBatch].students;[a[index-1],a[index]]=[a[index],a[index-1]];saveData();renderStudents();render();}
 function moveDown(index){if(currentBatch===null)return;const a=batches[currentBatch].students;if(index>=a.length-1)return;[a[index],a[index+1]]=[a[index+1],a[index]];saveData();renderStudents();render();}
+
 let profileBatchIndex=null,profileStudentIndex=null;
-function openStudentProfile(bi,si){profileBatchIndex=bi;profileStudentIndex=si;const b=batches[bi];document.getElementById('profileStudentName').value=b.students[si];document.getElementById('profileBatch').value=b.name;document.getElementById('profileTime').value=formatTime(b.time);document.getElementById('profilePosition').value=si+1;document.getElementById('profileOverlay').style.display='flex';}
-function closeStudentProfile(){document.getElementById('profileOverlay').style.display='none';profileBatchIndex=null;profileStudentIndex=null;}
-function saveStudentProfile(){if(profileBatchIndex===null)return;const name=document.getElementById('profileStudentName').value.trim();if(!name){alert('Student का नाम खाली नहीं हो सकता।');return;}batches[profileBatchIndex].students[profileStudentIndex]=name;saveData();closeStudentProfile();render();if(currentBatch!==null)renderStudents();}
+function openStudentProfile(bi,si){
+    profileBatchIndex=bi;profileStudentIndex=si;
+    const b=batches[bi];
+    document.getElementById("pageStudentName").textContent=b.students[si];
+    document.getElementById("pageStudentBatch").textContent=b.name;
+    document.getElementById("pageStudentTime").textContent=formatTime(b.time);
+    document.getElementById("pageStudentPosition").textContent=si+1;
 
-function escapeHtml(text){
-    return String(text)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
+    document.getElementById("overlay").style.display="none";
+    document.getElementById("profileOverlay").style.display="none";
+    document.getElementById("header")?.style && (document.getElementById("header").style.display="none");
+    document.querySelector(".header").style.display="none";
+    document.getElementById("batchGrid").style.display="none";
+    document.getElementById("studentProfilePage").style.display="block";
+    window.scrollTo(0,0);
 }
-
-document.getElementById("overlay").addEventListener("click",e=>{
-    if(e.target.id === "overlay") closeModal();
-});
-
+function closeStudentProfilePage(){
+    document.getElementById("studentProfilePage").style.display="none";
+    document.querySelector(".header").style.display="";
+    document.getElementById("batchGrid").style.display="";
+    profileBatchIndex=null;profileStudentIndex=null;
+    window.scrollTo(0,0);
+}
+function closeStudentProfile(){closeStudentProfilePage();}
+function saveStudentProfile(){
+    if(profileBatchIndex===null)return;
+    const name=document.getElementById("profileStudentName").value.trim();
+    if(!name){alert("Student का नाम खाली नहीं हो सकता।");return;}
+    batches[profileBatchIndex].students[profileStudentIndex]=name;saveData();closeStudentProfilePage();render();
+}
+function escapeHtml(text){return String(text).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+document.getElementById("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeModal();});
 document.getElementById("profileOverlay").addEventListener("click",e=>{if(e.target.id==="profileOverlay")closeStudentProfile();});
 render();
 </script>
 
-
 <script>
-/*
-  MongoDB persistence + safe first-time migration.
-  Existing browser localStorage is NOT discarded.
-  If MongoDB is empty, the current browser data is uploaded first.
-  If MongoDB already has data, MongoDB remains the source of truth.
-*/
-window.API_MODE = true;
-
-async function loadBatchesFromServer() {
-    try {
-        const response = await fetch("/api/batches");
-        if (!response.ok) throw new Error("API error");
-
-        const data = await response.json();
-
-        /* MongoDB is empty: preserve the current browser data by migrating it. */
-        if (!Array.isArray(data.batches)) {
-            const localRaw = localStorage.getItem("batchManagerData");
-
-            if (localRaw) {
-                try {
-                    const localBatches = JSON.parse(localRaw);
-
-                    if (Array.isArray(localBatches) && localBatches.length) {
-                        batches = localBatches;
-
-                        const migrated = await saveBatchesToServer();
-
-                        if (migrated) {
-                            localStorage.setItem(
-                                "batchManagerData",
-                                JSON.stringify(batches)
-                            );
-                        }
-
-                        render();
-                        return migrated;
-                    }
-                } catch (e) {
-                    console.warn("Local migration data could not be read.", e);
-                }
+window.API_MODE=true;
+async function loadBatchesFromServer(){
+    try{
+        const response=await fetch("/api/batches");if(!response.ok)throw new Error("API error");
+        const data=await response.json();
+        if(!Array.isArray(data.batches)){
+            const localRaw=localStorage.getItem("batchManagerData");
+            if(localRaw){
+                try{const localBatches=JSON.parse(localRaw);if(Array.isArray(localBatches)&&localBatches.length){batches=localBatches;const migrated=await saveBatchesToServer();render();return migrated;}}catch(e){console.warn("Local migration data could not be read.",e);}
             }
-
-            render();
-            return true;
+            render();return true;
         }
-
-        /* MongoDB already has data: use it. */
-        batches = data.batches;
-
-        localStorage.setItem(
-            "batchManagerData",
-            JSON.stringify(batches)
-        );
-
-        render();
-        return true;
-
-    } catch (error) {
-        console.warn(
-            "MongoDB API unavailable; using local browser data.",
-            error
-        );
-        return false;
-    }
+        batches=data.batches;localStorage.setItem("batchManagerData",JSON.stringify(batches));render();return true;
+    }catch(error){console.warn("MongoDB API unavailable; using local browser data.",error);return false;}
 }
-
-async function saveBatchesToServer() {
-    try {
-        const response = await fetch("/api/batches", {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                batches
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error("Save failed");
-        }
-
-        localStorage.setItem(
-            "batchManagerData",
-            JSON.stringify(batches)
-        );
-
-        return true;
-
-    } catch (error) {
-        console.warn(
-            "Could not save to MongoDB API.",
-            error
-        );
-
-        /* Keep local backup even if API is temporarily unavailable. */
-        localStorage.setItem(
-            "batchManagerData",
-            JSON.stringify(batches)
-        );
-
-        return false;
-    }
+async function saveBatchesToServer(){
+    try{
+        const response=await fetch("/api/batches",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({batches})});
+        if(!response.ok)throw new Error("Save failed");
+        localStorage.setItem("batchManagerData",JSON.stringify(batches));return true;
+    }catch(error){console.warn("Could not save to MongoDB API.",error);localStorage.setItem("batchManagerData",JSON.stringify(batches));return false;}
 }
+window.addEventListener("load",async()=>{await loadBatchesFromServer();});
 </script>
-
-
-<script>
-window.addEventListener("load", async () => {
-    await loadBatchesFromServer();
-});
-</script>
-<script>function closeStudentProfilePage(){
-
-    const page = document.getElementById("studentProfilePage");
-    if (page) page.style.display = "none";
-
-    const header = document.querySelector(".header");
-    const grid = document.getElementById("batchGrid");
-
-    if (header) header.style.display = "";
-    if (grid) grid.style.display = "";
-
-    window.scrollTo(0, 0);
-}</script></body>
+</body>
 </html>
