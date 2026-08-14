@@ -85,102 +85,56 @@ function saveData(){
 }
 
 
-function formatTime(t){
+function renderBatches(){
 
-    if(!t) return "Time Set";
+    const container =
+        document.getElementById("batchesContainer");
 
-    const [h,m] = t.split(":");
+    if(!container) return;
 
-    let hour = Number(h);
-
-    const ampm =
-        hour >= 12
-            ? "PM"
-            : "AM";
-
-    hour =
-        hour % 12 || 12;
-
-    return `${hour}:${m} ${ampm}`;
-
-}
-
-
-function render(){
-
-    const grid =
-        document.getElementById("batchGrid");
-
-    grid.innerHTML = "";
-
+    container.innerHTML = "";
 
     batches.forEach((batch,index)=>{
 
-        const box =
+        const card =
             document.createElement("div");
 
-        box.className = "batch";
+        card.className = "batch-card";
 
-        box.onclick =
-            () => openBatch(index);
+        card.innerHTML = `
 
+            <div class="batch-header">
 
-        let students =
-            batch.students.map((s,i) =>
-
-                `<div class="student">
-
-                    <span class="serial">
-                        ${i+1}.
-                    </span>
-
-                    <button
-                        class="student-name"
-                        onclick="
-                            event.stopPropagation();
-                            openStudentProfile(${index},${i})
-                        "
-                    >
-                        ${escapeHtml(s)}
-                    </button>
-
-                </div>`
-
-            ).join("");
-
-
-        if(!students){
-
-            students =
-                `<div class="empty">
-                    कोई Student नहीं
-                </div>`;
-
-        }
-
-
-        box.innerHTML = `
-
-            <div class="batch-head">
-
-                <div class="batch-name">
-                    ${escapeHtml(batch.name)}
+                <div
+                    class="batch-name"
+                    onclick="openBatch(${index})"
+                >
+                    ${batch.name}
                 </div>
 
-                <div class="batch-time">
-                    ${formatTime(batch.time)}
+                <div
+                    class="batch-time"
+                    onclick="editBatchTime(${index})"
+                >
+                    ${batch.time || "Time set करें"}
                 </div>
 
             </div>
 
-            <div class="students">
-                ${students}
+            <div class="student-count">
+                ${batch.students.length} Students
             </div>
+
+            <button
+                class="manage-btn"
+                onclick="openBatch(${index})"
+            >
+                Manage Students
+            </button>
 
         `;
 
-
-        grid.appendChild(box);
+        container.appendChild(card);
 
     });
 
@@ -191,730 +145,934 @@ function openBatch(index){
 
     currentBatch = index;
 
-    const b = batches[index];
+    const batch = batches[index];
 
+    const title =
+        document.getElementById("studentPageTitle");
 
-    document.getElementById("modalTitle").textContent =
-        b.name + " Manage";
-
-
-    document.getElementById("batchName").value =
-        b.name;
-
-
-    document.getElementById("batchTime").value =
-        b.time;
-
-
-    document.getElementById("newStudent").value =
-        "";
-
+    if(title){
+        title.textContent =
+            batch.name;
+    }
 
     renderStudents();
 
+    const page =
+        document.getElementById("studentPage");
 
-    document.getElementById("overlay").style.display =
-        "flex";
+    if(page){
+        page.classList.add("active");
+    }
 
 }
 
 
-function closeModal(){
+function closeStudentPage(){
 
-    document.getElementById("overlay").style.display =
-        "none";
+    const page =
+        document.getElementById("studentPage");
+
+    if(page){
+        page.classList.remove("active");
+    }
 
     currentBatch = null;
 
-    render();
-
 }
 
 
-function saveBatch(){
+function renderStudents(){
 
     if(currentBatch === null) return;
 
+    const batch =
+        batches[currentBatch];
+
+    const list =
+        document.getElementById("studentList");
+
+    if(!list) return;
+
+    list.innerHTML = "";
+
+    batch.students.forEach((student,index)=>{
+
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "student-row";
+
+        row.innerHTML = `
+
+            <div class="student-number">
+                ${index + 1}
+            </div>
+
+            <div
+                class="student-name"
+                onclick="openStudentProfile(${index})"
+            >
+                ${student}
+            </div>
+
+            <button
+                class="student-edit-btn"
+                onclick="editStudent(${index})"
+            >
+                Edit
+            </button>
+
+            <button
+                class="student-delete-btn"
+                onclick="deleteStudent(${index})"
+            >
+                Delete
+            </button>
+
+        `;
+
+        list.appendChild(row);
+
+    });
+
+}
+
+
+function addStudent(){
+
+    if(currentBatch === null) return;
+
+    const input =
+        document.getElementById("newStudentName");
+
+    if(!input) return;
 
     const name =
-        document
-            .getElementById("batchName")
-            .value
-            .trim();
+        input.value.trim();
 
+    if(!name) return;
 
-    const time =
-        document
-            .getElementById("batchTime")
-            .value;
+    batches[currentBatch].students.push(name);
 
-
-    if(name)
-        batches[currentBatch].name = name;
-
-
-    batches[currentBatch].time = time;
-
+    input.value = "";
 
     saveData();
 
-    closeModal();
+    renderStudents();
+
+    renderBatches();
 
 }
-function addStudent() {
-  
-  if (currentBatch === null) return;
-  
-  
-  const input =
-    document.getElementById("newStudent");
-  
-  
-  const name =
-    input.value.trim();
-  
-  
-  if (!name) return;
-  
-  
-  batches[currentBatch].students.push(name);
-  
-  
-  input.value = "";
-  
-  
-  saveData();
-  
-  
-  renderStudents();
-  
-  
-  render();
-  
-}
 
 
-function deleteStudent(index) {
-  
-  if (currentBatch === null) return;
-  
-  
-  batches[currentBatch].students.splice(
-    index,
-    1
-  );
-  
-  
-  saveData();
-  
-  
-  renderStudents();
-  
-  
-  render();
-  
+function editStudent(index){
+
+    if(currentBatch === null) return;
+
+    const oldName =
+        batches[currentBatch].students[index];
+
+    const newName =
+        prompt("Student name:",oldName);
+
+    if(newName === null) return;
+
+    const name =
+        newName.trim();
+
+    if(!name) return;
+
+    batches[currentBatch].students[index] =
+        name;
+
+    saveData();
+
+    renderStudents();
+
+    renderBatches();
+
 }
 
 
-function moveStudent(index) {
-  
-  if (currentBatch === null) return;
-  
-  
-  const student =
-    batches[currentBatch].students[index];
-  
-  
-  const target =
-    prompt(
-      
-      `Student: ${student}\n\n` +
-      
-      `किस Batch में Move करना है?\n\n` +
-      
-      batches
-      
-      .map((b, i) =>
-        
-        i === currentBatch ?
-        "" :
-        `${i+1}. ${b.name} — ${formatTime(b.time)}`
-        
-      )
-      
-      .filter(Boolean)
-      
-      .join("\n") +
-      
-      `\n\nBatch number लिखें (1-10):`
-      
+function deleteStudent(index){
+
+    if(currentBatch === null) return;
+
+    if(
+        !confirm(
+            "क्या आप इस Student को हटाना चाहते हैं?"
+        )
+    ){
+        return;
+    }
+
+    batches[currentBatch].students.splice(
+        index,
+        1
     );
-  
-  
-  if (target === null) return;
-  
-  
-  const targetIndex =
-    Number(target) - 1;
-  
-  
-  if (
-    
-    !Number.isInteger(targetIndex) ||
-    
-    targetIndex < 0 ||
-    
-    targetIndex >= batches.length ||
-    
-    targetIndex === currentBatch
-    
-  ) {
-    
-    alert("सही Batch number चुनें।");
-    
-    return;
-    
-  }
-  
-  
-  batches[targetIndex].students.push(
-    student
-  );
-  
-  
-  batches[currentBatch].students.splice(
-    index,
-    1
-  );
-  
-  
-  saveData();
-  
-  
-  renderStudents();
-  
-  
-  render();
-  
-}
 
+    saveData();
 
-function renderStudents() {
-  
-  const list =
-    document.getElementById("studentList");
-  
-  
-  const students =
-    batches[currentBatch].students;
-  
-  
-  if (!students.length) {
-    
-    list.innerHTML =
-      `<div class="empty">
-                कोई Student नहीं
-            </div>`;
-    
-    return;
-    
-  }
-  
-  
-  list.innerHTML =
-    
-    students.map((s, i) => `
+    renderStudents();
 
-            <div class="student-row">
-
-                <div class="serial-manage">
-                    ${i+1}.
-                </div>
-
-
-                <button
-                    class="manage-student-name"
-                    onclick="
-                        openStudentProfile(
-                            ${currentBatch},
-                            ${i}
-                        )
-                    "
-                >
-                    ${escapeHtml(s)}
-                </button>
-
-
-                <button
-                    class="small-btn btn-light"
-                    onclick="moveUp(${i})"
-                    ${i === 0 ? "disabled" : ""}
-                >
-                    ↑
-                </button>
-
-
-                <button
-                    class="small-btn btn-light"
-                    onclick="moveDown(${i})"
-                    ${i === students.length - 1 ? "disabled" : ""}
-                >
-                    ↓
-                </button>
-
-
-                <button
-                    class="small-btn btn-main"
-                    onclick="moveStudent(${i})"
-                >
-                    Move
-                </button>
-
-
-                <button
-                    class="small-btn btn-danger"
-                    onclick="deleteStudent(${i})"
-                >
-                    Delete
-                </button>
-
-            </div>
-
-        `).join("");
-  
-}
-
-
-function moveUp(index) {
-  
-  if (
-    currentBatch === null ||
-    index <= 0
-  ) {
-    return;
-  }
-  
-  
-  const a =
-    batches[currentBatch].students;
-  
-  
-  [
-    a[index - 1],
-    a[index]
-  ] = [
-    a[index],
-    a[index - 1]
-  ];
-  
-  
-  saveData();
-  
-  
-  renderStudents();
-  
-  
-  render();
-  
-}
-
-
-function moveDown(index) {
-  
-  if (currentBatch === null) return;
-  
-  
-  const a =
-    batches[currentBatch].students;
-  
-  
-  if (index >= a.length - 1) return;
-  
-  
-  [
-    a[index],
-    a[index + 1]
-  ] = [
-    a[index + 1],
-    a[index]
-  ];
-  
-  
-  saveData();
-  
-  
-  renderStudents();
-  
-  
-  render();
-  
-}
-let profileBatchIndex = null;
-let profileStudentIndex = null;
-
-
-function openStudentProfile(bi, si){
-
-    profileBatchIndex = bi;
-    profileStudentIndex = si;
-
-    const b = batches[bi];
-
-
-    document.getElementById("pageStudentName").textContent =
-        b.students[si];
-
-
-    document.getElementById("pageStudentBatch").textContent =
-        b.name;
-
-
-    document.getElementById("pageStudentTime").textContent =
-        formatTime(b.time);
-
-
-    document.getElementById("pageStudentPosition").textContent =
-        si + 1;
-
-
-    document.getElementById("overlay").style.display =
-        "none";
-
-
-    document.getElementById("profileOverlay").style.display =
-        "none";
-
-
-    document.querySelector(".header").style.display =
-        "none";
-
-
-    document.getElementById("batchGrid").style.display =
-        "none";
-
-
-    document.getElementById("studentProfilePage").style.display =
-        "block";
-
-
-    window.scrollTo(0,0);
+    renderBatches();
 
 }
 
 
-function closeStudentProfilePage(){
+function editBatchTime(index){
 
-    document.getElementById("studentProfilePage").style.display =
-        "none";
+    const batch =
+        batches[index];
+
+    const time =
+        prompt(
+            "Batch Time:",
+            batch.time || ""
+        );
+
+    if(time === null) return;
+
+    batch.time =
+        time.trim();
+
+    saveData();
+
+    renderBatches();
+
+}
 
 
-    document.querySelector(".header").style.display =
-        "";
+function openStudentProfile(index){
 
+    if(currentBatch === null) return;
 
-    document.getElementById("batchGrid").style.display =
-        "";
+    const student =
+        batches[currentBatch].students[index];
 
+    const profilePage =
+        document.getElementById(
+            "studentProfilePage"
+        );
 
-    profileBatchIndex = null;
-    profileStudentIndex = null;
+    if(!profilePage) return;
 
+    const profileName =
+        document.getElementById(
+            "profileStudentName"
+        );
 
-    window.scrollTo(0,0);
+    if(profileName){
+        profileName.textContent =
+            student;
+    }
+
+    profilePage.classList.add("active");
 
 }
 
 
 function closeStudentProfile(){
 
-    closeStudentProfilePage();
+    const profilePage =
+        document.getElementById(
+            "studentProfilePage"
+        );
+
+    if(profilePage){
+        profilePage.classList.remove("active");
+    }
 
 }
 
 
-function saveStudentProfile(){
+document.addEventListener(
+    "DOMContentLoaded",
+    function(){
 
-    if(profileBatchIndex === null) return;
+        renderBatches();
+
+        const addBtn =
+            document.getElementById(
+                "addStudentBtn"
+            );
+
+        if(addBtn){
+
+            addBtn.addEventListener(
+                "click",
+                addStudent
+            );
+
+        }
+
+    }
+);
+function renderStudents() {
+    
+    const list =
+        document.getElementById("studentList");
+    
+    list.innerHTML = "";
+    
+    const students =
+        batches[currentBatch].students;
+    
+    students.forEach((student, index) => {
+        
+        const row =
+            document.createElement("div");
+        
+        row.className = "student-row";
+        
+        row.innerHTML = `
+
+            <span class="student-serial">
+                ${index + 1}.
+            </span>
+
+            <span class="student-row-name">
+                ${escapeHtml(student)}
+            </span>
+
+            <button
+                class="edit-student"
+                onclick="editStudent(${index})"
+            >
+                Edit
+            </button>
+
+            <button
+                class="delete-student"
+                onclick="deleteStudent(${index})"
+            >
+                Delete
+            </button>
+
+        `;
+        
+        list.appendChild(row);
+        
+    });
+    
+}
 
 
+function saveBatch() {
+    
+    if (currentBatch === null) return;
+    
     const name =
-        document
-            .getElementById("profileStudentName")
-            .value
-            .trim();
-
-
-    if(!name){
-
-        alert(
-            "Student का नाम खाली नहीं हो सकता।"
-        );
-
-        return;
-
+        document.getElementById("batchName").value.trim();
+    
+    const time =
+        document.getElementById("batchTime").value;
+    
+    if (name) {
+        
+        batches[currentBatch].name =
+            name;
+        
     }
-
-
-    batches[
-        profileBatchIndex
-    ].students[
-        profileStudentIndex
-    ] = name;
-
-
+    
+    batches[currentBatch].time =
+        time;
+    
     saveData();
-
-
-    closeStudentProfilePage();
-
-
+    
     render();
-
+    
+    closeOverlay();
+    
 }
 
 
-function escapeHtml(text){
-
-    return String(text)
-
-        .replaceAll("&","&amp;")
-
-        .replaceAll("<","&lt;")
-
-        .replaceAll(">","&gt;")
-
-        .replaceAll('"',"&quot;")
-
-        .replaceAll("'","&#039;");
-
+function addStudent() {
+    
+    if (currentBatch === null) return;
+    
+    const input =
+        document.getElementById("newStudent");
+    
+    const name =
+        input.value.trim();
+    
+    if (!name) return;
+    
+    batches[currentBatch].students.push(
+        name
+    );
+    
+    input.value = "";
+    
+    saveData();
+    
+    renderStudents();
+    
+    render();
+    
 }
 
 
-document
-    .getElementById("overlay")
-    .addEventListener("click", e => {
-
-        if(e.target.id === "overlay"){
-
-            closeModal();
-
-        }
-
-    });
-
-
-document
-    .getElementById("profileOverlay")
-    .addEventListener("click", e => {
-
-        if(e.target.id === "profileOverlay"){
-
-            closeStudentProfile();
-
-        }
-
-    });
-
-
-render();
-
-
-/* =====================================================
-   MONGODB / API
-===================================================== */
-
-window.API_MODE = true;
-
-
-async function loadBatchesFromServer(){
-
-    try{
-
-        const response =
-            await fetch("/api/batches");
-
-
-        if(!response.ok){
-
-            throw new Error(
-                "API error"
-            );
-
-        }
-
-
-        const data =
-            await response.json();
-
-
-        /*
-          MongoDB खाली है तो पहले
-          localStorage वाला data save होगा।
-        */
-
-        if(!Array.isArray(data.batches)){
-
-            const localRaw =
-                localStorage.getItem(
-                    "batchManagerData"
-                );
-
-
-            if(localRaw){
-
-                try{
-
-                    const localBatches =
-                        JSON.parse(localRaw);
-
-
-                    if(
-                        Array.isArray(localBatches) &&
-                        localBatches.length
-                    ){
-
-                        batches =
-                            localBatches;
-
-
-                        const migrated =
-                            await saveBatchesToServer();
-
-
-                        render();
-
-
-                        return migrated;
-
-                    }
-
-                }catch(e){
-
-                    console.warn(
-                        "Local migration data could not be read.",
-                        e
-                    );
-
-                }
-
-            }
-
-
-            render();
-
-            return true;
-
-        }
-
-
-        /*
-          MongoDB में data मौजूद है,
-          इसलिए MongoDB को source of truth माना जाएगा।
-        */
-
-        batches =
-            data.batches;
-
-
-        localStorage.setItem(
-            "batchManagerData",
-            JSON.stringify(batches)
+function editStudent(index) {
+    
+    if (currentBatch === null) return;
+    
+    const oldName =
+        batches[currentBatch].students[index];
+    
+    const newName =
+        prompt(
+            "Student का नाम बदलें:",
+            oldName
         );
+    
+    if (newName === null) return;
+    
+    const name =
+        newName.trim();
+    
+    if (!name) return;
+    
+    batches[currentBatch].students[index] =
+        name;
+    
+    saveData();
+    
+    renderStudents();
+    
+    render();
+    
+}
 
 
+function deleteStudent(index) {
+    
+    if (currentBatch === null) return;
+    
+    const student =
+        batches[currentBatch].students[index];
+    
+    const ok =
+        confirm(
+            `"${student}" को Delete करना है?`
+        );
+    
+    if (!ok) return;
+    
+    batches[currentBatch].students.splice(
+        index,
+        1
+    );
+    
+    saveData();
+    
+    renderStudents();
+    
+    render();
+    
+}
+
+
+function closeOverlay() {
+    
+    document.getElementById("overlay").style.display =
+        "none";
+    
+    currentBatch = null;
+    
+}
+
+
+function openStudentProfile(
+    batchIndex,
+    studentIndex
+) {
+    
+    const student =
+        batches[batchIndex].students[
+            studentIndex
+        ];
+    
+    document.getElementById(
+            "profileStudentName"
+        ).textContent =
+        student;
+    
+    document.getElementById(
+            "profileBatch"
+        ).textContent =
+        batches[batchIndex].name;
+    
+    document.getElementById(
+            "profilePage"
+        ).style.display =
+        "block";
+    
+}
+
+
+function closeStudentProfile() {
+    
+    document.getElementById(
+            "profilePage"
+        ).style.display =
+        "none";
+    
+}
+
+
+function escapeHtml(value) {
+    
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    
+}
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+        
         render();
-
-
-        return true;
-
-
-    }catch(error){
-
-        console.warn(
-            "MongoDB API unavailable; using local browser data.",
-            error
-        );
-
-
-        return false;
-
-    }
-
-}
-
-
-async function saveBatchesToServer(){
-
-    try{
-
-        const response =
-            await fetch(
-                "/api/batches",
-                {
-                    method:"PUT",
-
-                    headers:{
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:JSON.stringify({
-                        batches
-                    })
-
-                }
+        
+        const saveBtn =
+            document.getElementById(
+                "saveBatch"
             );
-
-
-        if(!response.ok){
-
-            throw new Error(
-                "Save failed"
-            );
-
+        
+        if (saveBtn) {
+            
+            saveBtn.onclick =
+                saveBatch;
+            
         }
-
-
-        localStorage.setItem(
-            "batchManagerData",
-            JSON.stringify(batches)
-        );
-
-
-        return true;
-
-
-    }catch(error){
-
-        console.warn(
-            "Could not save to MongoDB API.",
-            error
-        );
-
-
-        /*
-          API fail होने पर भी
-          local backup रहेगा।
-        */
-
-        localStorage.setItem(
-            "batchManagerData",
-            JSON.stringify(batches)
-        );
-
-
-        return false;
-
+        
+        const addBtn =
+            document.getElementById(
+                "addStudentBtn"
+            );
+        
+        if (addBtn) {
+            
+            addBtn.onclick =
+                addStudent;
+            
+        }
+        
     }
-
+);
+function render() {
+    
+    renderBatches();
+    
+    if (currentBatch !== null) {
+        renderStudents();
+    }
+    
 }
 
 
-window.addEventListener(
-    "load",
-    async () => {
+function renderBatches() {
+    
+    const container =
+        document.getElementById(
+            "batchesContainer"
+        );
+    
+    if (!container) return;
+    
+    container.innerHTML = "";
+    
+    batches.forEach(
+        (batch, index) => {
+            
+            const card =
+                document.createElement("div");
+            
+            card.className =
+                "batch-card";
+            
+            card.innerHTML = `
 
-        await loadBatchesFromServer();
+                <div class="batch-title">
+                    ${escapeHtml(batch.name)}
+                </div>
 
+                <div
+                    class="batch-time"
+                    onclick="editBatchTime(${index})"
+                >
+                    ${escapeHtml(
+                        batch.time || "Time"
+                    )}
+                </div>
+
+                <div class="batch-student-count">
+                    ${batch.students.length}
+                    Students
+                </div>
+
+                <button
+                    onclick="openBatch(${index})"
+                >
+                    Manage Students
+                </button>
+
+            `;
+            
+            container.appendChild(card);
+            
+        }
+    );
+    
+}
+
+
+function openBatch(index) {
+    
+    currentBatch =
+        index;
+    
+    const batch =
+        batches[index];
+    
+    const title =
+        document.getElementById(
+            "studentPageTitle"
+        );
+    
+    if (title) {
+        
+        title.textContent =
+            batch.name;
+        
+    }
+    
+    renderStudents();
+    
+    const page =
+        document.getElementById(
+            "studentPage"
+        );
+    
+    if (page) {
+        
+        page.style.display =
+            "block";
+        
+    }
+    
+}
+
+
+function closeStudentPage() {
+    
+    const page =
+        document.getElementById(
+            "studentPage"
+        );
+    
+    if (page) {
+        
+        page.style.display =
+            "none";
+        
+    }
+    
+    currentBatch =
+        null;
+    
+}
+
+
+function editBatchTime(index) {
+    
+    const oldTime =
+        batches[index].time || "";
+    
+    const newTime =
+        prompt(
+            "Batch का Time:",
+            oldTime
+        );
+    
+    if (newTime === null) {
+        return;
+    }
+    
+    batches[index].time =
+        newTime.trim();
+    
+    saveData();
+    
+    render();
+    
+}
+
+
+function moveStudent(
+    fromBatch,
+    studentIndex,
+    toBatch
+) {
+    
+    if (
+        fromBatch === toBatch
+    ) {
+        
+        return;
+        
+    }
+    
+    const student =
+        batches[fromBatch]
+        .students
+        .splice(
+            studentIndex,
+            1
+        )[0];
+    
+    if (!student) {
+        return;
+    }
+    
+    batches[toBatch]
+        .students
+        .push(student);
+    
+    saveData();
+    
+    render();
+    
+}
+
+
+function openMoveStudent(index) {
+    
+    if (currentBatch === null) {
+        return;
+    }
+    
+    const student =
+        batches[currentBatch]
+        .students[index];
+    
+    if (!student) {
+        return;
+    }
+    
+    let options = "";
+    
+    batches.forEach(
+        (batch, batchIndex) => {
+            
+            if (
+                batchIndex !==
+                currentBatch
+            ) {
+                
+                options +=
+                    `${batchIndex + 1}. ${batch.name}\n`;
+                
+            }
+            
+        }
+    );
+    
+    const answer =
+        prompt(
+            `Student: ${student}\n\n` +
+            `किस Batch में भेजना है?\n\n` +
+            options
+        );
+    
+    if (answer === null) {
+        return;
+    }
+    
+    const selected =
+        parseInt(answer, 10) - 1;
+    
+    if (
+        Number.isNaN(selected) ||
+        selected < 0 ||
+        selected >= batches.length ||
+        selected === currentBatch
+    ) {
+        
+        alert("Invalid Batch");
+        
+        return;
+        
+    }
+    
+    moveStudent(
+        currentBatch,
+        index,
+        selected
+    );
+    
+}
+function initStudentProfileFamily() {
+    
+    const familyStatus =
+        document.getElementById(
+            "profileFamilyStatus"
+        );
+    
+    const familyActions =
+        document.getElementById(
+            "profileFamilyActions"
+        );
+    
+    if (!familyStatus || !familyActions) {
+        return;
+    }
+    
+    familyStatus.textContent =
+        "Solo";
+    
+    familyActions.innerHTML = `
+
+        <button
+            type="button"
+            onclick="addStudentToFamily()"
+        >
+            Add to Family
+        </button>
+
+        <button
+            type="button"
+            onclick="removeStudentFromFamily()"
+        >
+            Remove from Family
+        </button>
+
+    `;
+    
+}
+
+
+function addStudentToFamily() {
+    
+    const familyCode =
+        prompt(
+            "Family Code डालें:"
+        );
+    
+    if (familyCode === null) {
+        return;
+    }
+    
+    const code =
+        familyCode.trim();
+    
+    if (!code) {
+        return;
+    }
+    
+    const status =
+        document.getElementById(
+            "profileFamilyStatus"
+        );
+    
+    if (status) {
+        
+        status.textContent =
+            "Family";
+        
+    }
+    
+    alert(
+        "Student को Family में add कर दिया गया।"
+    );
+    
+}
+
+
+function removeStudentFromFamily() {
+    
+    const ok =
+        confirm(
+            "क्या इस Student को Family से remove करना है?"
+        );
+    
+    if (!ok) {
+        return;
+    }
+    
+    const status =
+        document.getElementById(
+            "profileFamilyStatus"
+        );
+    
+    if (status) {
+        
+        status.textContent =
+            "Solo";
+        
+    }
+    
+}
+
+
+function saveFamilyData() {
+    
+    saveData();
+    
+}
+
+
+window.addStudentToFamily =
+    addStudentToFamily;
+
+window.removeStudentFromFamily =
+    removeStudentFromFamily;
+
+window.openStudentProfile =
+    openStudentProfile;
+
+window.closeStudentProfile =
+    closeStudentProfile;
+
+window.openMoveStudent =
+    openMoveStudent;
+
+window.moveStudent =
+    moveStudent;
+
+window.addStudent =
+    addStudent;
+
+window.editStudent =
+    editStudent;
+
+window.deleteStudent =
+    deleteStudent;
+
+window.editBatchTime =
+    editBatchTime;
+
+window.openBatch =
+    openBatch;
+
+window.closeStudentPage =
+    closeStudentPage;
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+        
+        initStudentProfileFamily();
+        
+        render();
+        
     }
 );
