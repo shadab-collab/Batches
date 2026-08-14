@@ -3,65 +3,535 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Batch Manager</title>
-<link rel="stylesheet" href="style.css">
 
+<title>Batch Manager</title>
+
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<div class="header">Batch Manager</div>
-<div class="batch-grid" id="batchGrid"></div>
 
-<div class="overlay" id="overlay">
-    <div class="modal">
-        <h2 id="modalTitle">Batch Manage</h2>
-        <div class="field"><label>Batch Name</label><input id="batchName" type="text"></div>
-        <div class="field"><label>Time</label><input id="batchTime" type="time"></div>
-        <div class="field"><label>Students</label><div id="studentList"></div></div>
-        <div class="row"><input id="newStudent" type="text" placeholder="Student का नाम"><button class="btn-green" onclick="addStudent()">+ Add</button></div>
-        <div class="note">Student के सामने Move से दूसरे Batch में भेज सकते हैं।</div>
-        <div class="actions"><button class="btn-main" onclick="saveBatch()">Save</button><button class="btn-light" onclick="closeModal()">Close</button></div>
-    </div>
+<!-- =====================================================
+     HOME
+===================================================== -->
+
+<div class="header">
+    Batch Manager
 </div>
 
-<div class="overlay" id="profileOverlay">
-    <div class="modal">
-        <h2>Student Profile</h2>
-        <div class="field"><label>Student Name</label><input id="profileStudentName" type="text"></div>
-        <div class="field"><label>Batch</label><input id="profileBatch" type="text" disabled></div>
-        <div class="field"><label>Time</label><input id="profileTime" type="text" disabled></div>
-        <div class="field"><label>Position</label><input id="profilePosition" type="text" disabled></div>
-        <div class="actions"><button class="btn-main" onclick="saveStudentProfile()">Save</button><button class="btn-light" onclick="closeStudentProfile()">Close</button></div>
-    </div>
+
+<div
+    class="batch-grid"
+    id="batchGrid"
+></div>
+
+
+<!-- =====================================================
+     INACTIVE BUTTON
+===================================================== -->
+
+<div class="inactive-home-wrap">
+
+    <button
+        class="inactive-home-btn"
+        onclick="openInactivePage()"
+    >
+        Inactive Students
+    </button>
+
 </div>
+
+
+<!-- =====================================================
+     BATCH MANAGE
+===================================================== -->
+
+<div
+    class="overlay"
+    id="overlay"
+>
+
+    <div class="modal">
+
+        <h2 id="modalTitle">
+            Batch Manage
+        </h2>
+
+
+        <div class="field">
+
+            <label>
+                Batch Name
+            </label>
+
+            <input
+                id="batchName"
+                type="text"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                Time
+            </label>
+
+            <input
+                id="batchTime"
+                type="time"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                Students
+            </label>
+
+            <div
+                id="studentList"
+            ></div>
+
+        </div>
+
+
+        <div class="row">
+
+            <input
+                id="newStudent"
+                type="text"
+                placeholder="Student का नाम"
+            >
+
+
+            <button
+                class="btn-green"
+                onclick="addStudent()"
+            >
+                + Add
+            </button>
+
+        </div>
+
+
+        <div class="note">
+            Student के सामने Move से दूसरे Batch में भेज सकते हैं।
+        </div>
+
+
+        <div class="actions">
+
+            <button
+                class="btn-main"
+                onclick="saveBatch()"
+            >
+                Save
+            </button>
+
+
+            <button
+                class="btn-light"
+                onclick="closeModal()"
+            >
+                Close
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     OLD PROFILE OVERLAY
+===================================================== -->
+
+<div
+    class="overlay"
+    id="profileOverlay"
+>
+
+    <div class="modal">
+
+        <h2>
+            Student Profile
+        </h2>
+
+
+        <div class="field">
+
+            <label>
+                Student Name
+            </label>
+
+            <input
+                id="profileStudentName"
+                type="text"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                Batch
+            </label>
+
+            <input
+                id="profileBatch"
+                type="text"
+                disabled
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                Time
+            </label>
+
+            <input
+                id="profileTime"
+                type="text"
+                disabled
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                Position
+            </label>
+
+            <input
+                id="profilePosition"
+                type="text"
+                disabled
+            >
+
+        </div>
+
+
+        <div class="actions">
+
+            <button
+                class="btn-main"
+                onclick="saveStudentProfile()"
+            >
+                Save
+            </button>
+
+
+            <button
+                class="btn-light"
+                onclick="closeStudentProfile()"
+            >
+                Close
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     STUDENT PROFILE PAGE
+===================================================== -->
 
 <div id="studentProfilePage">
+
+
     <div class="student-profile-topbar">
-        <button class="student-profile-back" onclick="closeStudentProfilePage()">← Back</button>
-        <div class="student-profile-heading">Student Profile</div>
+
+        <button
+            class="student-profile-back"
+            onclick="closeStudentProfilePage()"
+        >
+            ← Back
+        </button>
+
+
+        <div class="student-profile-heading">
+            Student Profile
+        </div>
+
     </div>
+
+
     <div class="student-profile-wrap">
+
+
+        <!-- BASIC PROFILE -->
+
         <div class="student-profile-card">
+
+
             <div class="student-profile-name">
-                <strong id="pageStudentName">Student</strong>
-                <span>Student Profile</span>
+
+                <strong id="pageStudentName">
+                    Student
+                </strong>
+
+
+                <span>
+                    Student Profile
+                </span>
+
             </div>
+
+
             <div class="student-profile-info">
-                <div class="student-profile-info-row"><div class="student-profile-info-label">Batch</div><div id="pageStudentBatch" class="student-profile-info-value">-</div></div>
-                <div class="student-profile-info-row"><div class="student-profile-info-label">Time</div><div id="pageStudentTime" class="student-profile-info-value">-</div></div>
-                <div class="student-profile-info-row"><div class="student-profile-info-label">Position</div><div id="pageStudentPosition" class="student-profile-info-value">-</div></div>
+
+
+                <!-- BATCH -->
+
+                <div class="student-profile-info-row">
+
+                    <div class="student-profile-info-label">
+                        Batch
+                    </div>
+
+
+                    <div
+                        id="pageStudentBatch"
+                        class="student-profile-info-value"
+                    >
+                        -
+                    </div>
+
+                </div>
+
+
+                <!-- TIME -->
+
+                <div class="student-profile-info-row">
+
+                    <div class="student-profile-info-label">
+                        Time
+                    </div>
+
+
+                    <div
+                        id="pageStudentTime"
+                        class="student-profile-info-value"
+                    >
+                        -
+                    </div>
+
+                </div>
+
+
+                <!-- POSITION -->
+
+                <div class="student-profile-info-row">
+
+                    <div class="student-profile-info-label">
+                        Position
+                    </div>
+
+
+                    <div
+                        id="pageStudentPosition"
+                        class="student-profile-info-value"
+                    >
+                        -
+                    </div>
+
+                </div>
+
+
+                <!-- SOLO / FAMILY -->
+
+                <div class="student-profile-info-row">
+
+                    <div class="student-profile-info-label">
+                        Type
+                    </div>
+
+
+                    <div
+                        id="pageStudentFamilyStatus"
+                        class="student-profile-info-value"
+                    >
+                        Solo
+                    </div>
+
+                </div>
+
+
+                <!-- FAMILY CODE -->
+
+                <div
+                    class="student-profile-info-row"
+                    id="familyCodeRow"
+                    style="display:none;"
+                >
+
+                    <div class="student-profile-info-label">
+                        Family Code
+                    </div>
+
+
+                    <div
+                        id="pageStudentFamilyCode"
+                        class="student-profile-info-value"
+                    >
+                        -
+                    </div>
+
+                </div>
+
+
             </div>
+
         </div>
+
+
+        <!-- =================================================
+             FAMILY SECTION
+        ================================================== -->
+
+        <div
+            class="student-profile-section"
+            id="familySection"
+        >
+
+
+            <div class="student-profile-section-title">
+                Family
+            </div>
+
+
+            <div
+                class="student-profile-section-body"
+                id="familyMembers"
+            >
+                यह बच्चा Solo है।
+            </div>
+
+
+            <!-- FAMILY ACTIONS -->
+
+            <div
+                class="family-actions"
+                id="familyActions"
+            >
+
+
+                <button
+                    class="btn-main"
+                    onclick="addStudentToFamily()"
+                >
+                    Add to Family
+                </button>
+
+
+                <button
+                    class="btn-light"
+                    onclick="removeStudentFromFamily()"
+                >
+                    Remove from Family
+                </button>
+
+
+                <button
+                    class="btn-danger"
+                    onclick="sendStudentToInactive()"
+                >
+                    Send to Inactive
+                </button>
+
+
+            </div>
+
+
+        </div>
+
+
+        <!-- =================================================
+             OTHER PROFILE DETAILS
+        ================================================== -->
+
         <div class="student-profile-section">
-            <div class="student-profile-section-title">Student Profile</div>
-            <div class="student-profile-section-body">Student profile details यहाँ आगे जोड़े जाएंगे।</div>
+
+
+            <div class="student-profile-section-title">
+                Student Profile
+            </div>
+
+
+            <div class="student-profile-section-body">
+                Student profile details यहाँ आगे जोड़े जाएंगे।
+            </div>
+
+
         </div>
+
+
     </div>
+
 </div>
 
 
+<!-- =====================================================
+     INACTIVE STUDENTS PAGE
+===================================================== -->
 
+<div id="inactiveStudentsPage">
+
+
+    <div class="student-profile-topbar">
+
+
+        <button
+            class="student-profile-back"
+            onclick="closeInactivePage()"
+        >
+            ← Back
+        </button>
+
+
+        <div class="student-profile-heading">
+            Inactive Students
+        </div>
+
+
+    </div>
+
+
+    <div class="inactive-page-wrap">
+
+
+        <div
+            id="inactiveStudentList"
+            class="inactive-student-list"
+        ></div>
+
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     SCRIPT
+===================================================== -->
 
 <script src="script.js"></script>
+
+
 </body>
 </html>
