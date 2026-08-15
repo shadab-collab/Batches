@@ -1,7 +1,8 @@
 const express = require("express");
 const path = require("path");
-const {connectMongo} = require("./config/db");
+const { connectMongo } = require("./config/db");
 const batchesRouter = require("./routes/batches");
+const feesRouter = require("./routes/fees");
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: "1mb" }));
@@ -15,9 +16,10 @@ app.get("/", (req, res) => {
 /* =====================================================
    API ROUTES
    (add new feature routers here as the project grows —
-    e.g. routes/fees.js, routes/attendance.js)
+    e.g. routes/attendance.js)
 ===================================================== */
 app.use("/api", batchesRouter);
+app.use("/api/fees", feesRouter);
 /* =====================================================
    START SERVER
 ===================================================== */

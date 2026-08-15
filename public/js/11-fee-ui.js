@@ -1,0 +1,330 @@
+/* =====================================================
+   FEE OWNER HELPERS
+===================================================== */
+function getFeeOwner(student) {
+  if (student.familyCode) {
+    return { ownerType: "family", ownerKey: student.familyCode };
+  }
+  return { ownerType: "student", ownerKey: student.id };
+}
+
+let currentFeeOwner = null;
+let currentFeeData = null;
+let currentFeeStudent = null;
+
+/* =====================================================
+   LOAD + RENDER FEE CARD
+===================================================== */
+async function loadFeeCard(student) {
+  currentFeeStudent = student;
+  const owner = getFeeOwner(student);
+  currentFeeOwner = owner;
+
+  const body = document.getElementById("feeCardBody");
+  if (!body) {
+    return;
+  }
+  body.innerHTML = `<div class="empty">लोड हो रहा है...</div>`;
+
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }`);
+    const data = await res.json();
+    currentFeeData = data;
+    renderFeeCard(data);
+  } catch (error) {
+    body.innerHTML = `<div class="empty">Fee data load नहीं हुआ।</div>`;
+  }
+}
+
+function renderFeeCard(data) {
+  const body = document.getElementById("feeCardBody");
+  if (!body) {
+    return;
+  }
+
+  if (!data.success) {
+    body.innerHTML = `<div class="empty">${ escapeHtml(data.message || "Error") }</div>`;
+    return;
+  }
+
+  if (!data.hasProfile) {
+    body.innerHTML = `
+            <div class="empty">अभी तक Fee तय नहीं है।</div>
+            <div class="fee-actions">
+                <button class="btn-main" onclick="openFeeSetupModal()">Set Fee</button>
+            </div>
+        `;
+    return;
+  }
+
+  const profile = data.activeProfile;
+  const modeLabel = profile.feeMode === "individual" ? "Family (Individual Fee)"
+    : profile.feeMode === "total" ? "Family (Total Fee)"
+    : "Solo";
+
+  const amountLine = profile.feeMode === "individual"
+    ? profile.memberFees.map(m => `${ escapeHtml(m.studentId) }: ₹${ m.amount }`).join(", ")
+    : `₹${ profile.amount }`;
+
+  const cycleRows = data.cycles.slice().reverse().map(c => `
+            <div class="fee-row">
+                <div class="fee-row-main">
+                    <span>${ c.cycleStart } → ${ c.cycleEnd }</span>
+                    <span class="fee-status fee-status-${ c.status.toLowerCase() }">${ c.status }</span>
+                </div>
+                <div class="fee-row-sub">
+                    Due ₹${ c.amountDue } · Paid ₹${ c.paidSum } · Remaining ₹${ c.remaining }
+                </div>
+            </div>
+        `).join("");
+
+  body.innerHTML = `
+        <div class="fee-summary">
+            <div><strong>Type:</strong> ${ modeLabel }</div>
+            <div><strong>Amount:</strong> ${ amountLine }</div>
+            <div><strong>Due Date:</strong> ${ profile.dueDateType } हर महीने</div>
+            <div class="fee-total-due">Total Due: ₹${ data.totalDue }</div>
+        </div>
+
+        <div class="fee-actions">
+            <button class="btn-main" onclick="openPaymentModal()">Record Payment</button>
+            <button class="btn-light" onclick="openFeeSetupModal()">Edit Fee</button>
+        </div>
+
+        <div class="fee-history">
+            ${ cycleRows || '<div class="empty">कोई cycle नहीं</div>' }
+        </div>
+    `;
+}
+
+
+/* =====================================================
+   FEE SETUP MODAL (create / edit profile)
+===================================================== */
+function openFeeSetupModal() {
+  const owner = currentFeeOwner;
+  const isFamily = owner.ownerType === "family";
+  const hasProfile = currentFeeData && currentFeeData.hasProfile;
+  const profile = hasProfile ? currentFeeData.activeProfile : null;
+
+  let membersFieldsHtml = "";
+  if (isFamily) {
+    const members = getFamilyMembers(owner.ownerKey);
+    membersFieldsHtml = `
+            <div class="field" id="individualFeeFields" style="display:none;">
+                <label>हर बच्चे की Fee (₹)</label>
+                ${ members.map(m => {
+                  const existing = profile && profile.feeMode === "individual"
+                    ? (profile.memberFees.find(x => x.studentId === m.id) || {}).amount
+                    : "";
+                  return `
+                        <div class="fee-member-input">
+                            <span>${ escapeHtml(m.name) }</span>
+                            <input type="number" class="fee-member-amount" data-student-id="${ m.id }" value="${ existing || "" }" placeholder="0">
+                        </div>
+                    `;
+                }).join("") }
+            </div>
+        `;
+  }
+
+  const feeModeOptions = isFamily
+    ? `
+            <option value="total" ${ profile && profile.feeMode === "total" ? "selected" : "" }>Family Total Fee</option>
+            <option value="individual" ${ profile && profile.feeMode === "individual" ? "selected" : "" }>Individual Fixed Fee</option>
+        `
+    : `<option value="fixed">Fixed Fee</option>`;
+
+  const modal = document.getElementById("feeOverlay");
+  document.getElementById("feeModalTitle").textContent = hasProfile ? "Fee Update करें" : "Fee तय करें";
+
+  document.getElementById("feeModalBody").innerHTML = `
+        <div class="field">
+            <label>Fee Type</label>
+            <select id="feeModeSelect" onchange="toggleFeeModeFields()">
+                ${ feeModeOptions }
+            </select>
+        </div>
+
+        <div class="field" id="totalAmountField">
+            <label>Amount (₹)</label>
+            <input id="feeAmountInput" type="number" value="${ profile && profile.feeMode !== "individual" ? profile.amount : "" }">
+        </div>
+
+        ${ membersFieldsHtml }
+
+        <div class="field">
+            <label>Due Date</label>
+            <select id="feeDueDateSelect">
+                <option value="1" ${ profile && profile.dueDateType === 1 ? "selected" : "" }>1 तारीख</option>
+                <option value="15" ${ profile && profile.dueDateType === 15 ? "selected" : "" }>15 तारीख</option>
+            </select>
+        </div>
+
+        ${ !hasProfile ? `
+        <div class="field">
+            <label>Joining Date</label>
+            <input id="feeJoiningDateInput" type="date">
+        </div>
+        ` : "" }
+
+        <div class="empty" style="margin-top:8px;">
+            बदलाव अगली Fee Cycle से लागू होगा। मौजूदा/पुरानी Cycle की Amount नहीं बदलेगी।
+        </div>
+    `;
+
+  modal.style.display = "flex";
+  toggleFeeModeFields();
+}
+
+function toggleFeeModeFields() {
+  const mode = document.getElementById("feeModeSelect").value;
+  const totalField = document.getElementById("totalAmountField");
+  const individualField = document.getElementById("individualFeeFields");
+  if (mode === "individual") {
+    totalField.style.display = "none";
+    if (individualField) {
+      individualField.style.display = "block";
+    }
+  } else {
+    totalField.style.display = "block";
+    if (individualField) {
+      individualField.style.display = "none";
+    }
+  }
+}
+
+async function saveFeeProfile() {
+  const owner = currentFeeOwner;
+  const feeMode = document.getElementById("feeModeSelect").value;
+  const dueDateType = Number(document.getElementById("feeDueDateSelect").value);
+
+  const body = { feeMode, dueDateType };
+
+  if (feeMode === "individual") {
+    const inputs = document.querySelectorAll(".fee-member-amount");
+    body.memberFees = Array.from(inputs).map(inp => ({
+      studentId: inp.dataset.studentId,
+      amount: Number(inp.value) || 0
+    }));
+    body.amount = 0;
+  } else {
+    body.amount = Number(document.getElementById("feeAmountInput").value) || 0;
+  }
+
+  const joiningInput = document.getElementById("feeJoiningDateInput");
+  if (joiningInput) {
+    if (!joiningInput.value) {
+      alert("Joining Date भरें");
+      return;
+    }
+    body.joiningDate = joiningInput.value;
+  }
+
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/profile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Save नहीं हुआ");
+      return;
+    }
+    closeFeeModal();
+    await loadFeeCard(currentFeeStudent);
+  } catch (error) {
+    alert("Fee Save नहीं हो सकी। इंटरनेट चेक करें।");
+  }
+}
+
+
+/* =====================================================
+   PAYMENT MODAL
+===================================================== */
+function openPaymentModal() {
+  const owner = currentFeeOwner;
+  const dueCycles = (currentFeeData.cycles || []).filter(c => c.remaining > 0);
+
+  const modal = document.getElementById("feeOverlay");
+  document.getElementById("feeModalTitle").textContent = "Payment दर्ज करें";
+
+  const cycleRowsHtml = dueCycles.length
+    ? dueCycles.map(c => `
+            <div class="fee-member-input">
+                <span>${ c.cycleStart } → ${ c.cycleEnd } (बाकी ₹${ c.remaining })</span>
+                <input type="number" class="fee-payment-amount" data-cycle-key="${ c.cycleKey }" placeholder="0">
+            </div>
+        `).join("")
+    : `<div class="empty">कोई बकाया Cycle नहीं है।</div>`;
+
+  document.getElementById("feeModalBody").innerHTML = `
+        <div class="field">
+            <label>किस Cycle में कितना जमा हुआ</label>
+            ${ cycleRowsHtml }
+        </div>
+
+        <div class="field">
+            <label>Payment Date</label>
+            <input id="feePaymentDateInput" type="date" value="${ new Date().toISOString().slice(0, 10) }">
+        </div>
+
+        <div class="field">
+            <label>Note (optional)</label>
+            <input id="feePaymentNoteInput" type="text" placeholder="जैसे: ₹100 बाकी अगली बार">
+        </div>
+    `;
+
+  modal.style.display = "flex";
+}
+
+async function savePayment() {
+  const owner = currentFeeOwner;
+  const inputs = document.querySelectorAll(".fee-payment-amount");
+  const allocations = Array.from(inputs)
+    .map(inp => ({ cycleKey: inp.dataset.cycleKey, amount: Number(inp.value) || 0 }))
+    .filter(a => a.amount > 0);
+
+  if (!allocations.length) {
+    alert("कम से कम एक Cycle में Amount भरें");
+    return;
+  }
+
+  const paymentDate = document.getElementById("feePaymentDateInput").value;
+  const note = document.getElementById("feePaymentNoteInput").value;
+
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentDate, note, allocations })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Payment Save नहीं हुआ");
+      return;
+    }
+    closeFeeModal();
+    await loadFeeCard(currentFeeStudent);
+  } catch (error) {
+    alert("Payment Save नहीं हो सकी। इंटरनेट चेक करें।");
+  }
+}
+
+
+/* =====================================================
+   MODAL HELPERS
+===================================================== */
+function closeFeeModal() {
+  document.getElementById("feeOverlay").style.display = "none";
+}
+
+function saveFeeModal() {
+  const title = document.getElementById("feeModalTitle").textContent;
+  if (title === "Payment दर्ज करें") {
+    savePayment();
+  } else {
+    saveFeeProfile();
+  }
+}

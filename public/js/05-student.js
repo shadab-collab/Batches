@@ -49,6 +49,7 @@ function openStudentProfile(bi, si) {
   document.getElementById("pageStudentTime").textContent = formatTime(batch.time);
   document.getElementById("pageStudentPosition").textContent = si + 1;
   updateFamilyProfile(student);
+  loadFeeCard(student);
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";
   document.querySelector(".header").style.display = "none";

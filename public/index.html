@@ -248,6 +248,47 @@
 
 
 <!-- =====================================================
+     FEE OVERLAY
+===================================================== -->
+
+<div
+    class="overlay"
+    id="feeOverlay"
+>
+
+    <div class="modal">
+
+        <h2 id="feeModalTitle">
+            Fee
+        </h2>
+
+        <div id="feeModalBody">
+        </div>
+
+        <div class="actions">
+
+            <button
+                class="btn-main"
+                onclick="saveFeeModal()"
+            >
+                Save
+            </button>
+
+            <button
+                class="btn-light"
+                onclick="closeFeeModal()"
+            >
+                Close
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
      STUDENT PROFILE PAGE
 ===================================================== -->
 
@@ -462,6 +503,29 @@
 
 
         <!-- =================================================
+             FEE SECTION
+        ================================================== -->
+
+        <div
+            class="student-profile-section"
+            id="feeSection"
+        >
+
+            <div class="student-profile-section-title">
+                Fee
+            </div>
+
+            <div
+                class="student-profile-section-body"
+                id="feeCardBody"
+            >
+                -
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
              OTHER PROFILE DETAILS
         ================================================== -->
 
@@ -539,6 +603,8 @@
 <script src="js/07-student-actions-inactive.js"></script>
 <script src="js/08-utils-events.js"></script>
 <script src="js/09-api-server.js"></script>
+<script src="js/10-fee-utils.js"></script>
+<script src="js/11-fee-ui.js"></script>
 
 
 </body>

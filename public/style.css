@@ -605,3 +605,119 @@ button{
     }
 
 }
+
+/* =====================================================
+   FEE CARD
+===================================================== */
+
+.fee-summary{
+    text-align:left;
+    padding:16px;
+    color:#333;
+    font-size:14px;
+    line-height:1.8
+}
+
+.fee-total-due{
+    margin-top:8px;
+    font-size:16px;
+    font-weight:700;
+    color:#c0392b
+}
+
+.fee-actions{
+    display:flex;
+    gap:8px;
+    padding:0 16px 16px
+}
+
+.fee-actions button{
+    flex:1
+}
+
+.fee-history{
+    border-top:1px solid #eee;
+    text-align:left
+}
+
+.fee-row{
+    padding:10px 16px;
+    border-bottom:1px solid #eee
+}
+
+.fee-row:last-child{
+    border-bottom:0
+}
+
+.fee-row-main{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:14px;
+    color:#222
+}
+
+.fee-row-sub{
+    margin-top:4px;
+    font-size:12px;
+    color:#888
+}
+
+.fee-status{
+    font-size:12px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:20px
+}
+
+.fee-status-paid{
+    background:#e6f7ec;
+    color:#1e8e3e
+}
+
+.fee-status-partial{
+    background:#fff4e0;
+    color:#b8720a
+}
+
+.fee-status-unpaid{
+    background:#fde8e8;
+    color:#c0392b
+}
+
+.fee-status-advance{
+    background:#e8f0fe;
+    color:#1a56db
+}
+
+.fee-member-input{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px
+}
+
+.fee-member-input span{
+    font-size:14px;
+    color:#333;
+    flex:1
+}
+
+.fee-member-amount,
+.fee-payment-amount{
+    width:100px;
+    padding:8px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    font-size:14px
+}
+
+
+@media(max-width:600px){
+
+    .fee-actions{
+        flex-direction:column
+    }
+
+}
