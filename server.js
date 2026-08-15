@@ -3,6 +3,7 @@ const path = require("path");
 const { connectMongo } = require("./config/db");
 const batchesRouter = require("./routes/batches");
 const feesRouter = require("./routes/fees");
+const receiptsRouter = require("./routes/receipts");
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: "1mb" }));
@@ -20,6 +21,7 @@ app.get("/", (req, res) => {
 ===================================================== */
 app.use("/api", batchesRouter);
 app.use("/api/fees", feesRouter);
+app.use("/api/receipts", receiptsRouter);
 /* =====================================================
    START SERVER
 ===================================================== */

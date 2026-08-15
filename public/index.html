@@ -7,6 +7,12 @@
 <title>Batch Manager</title>
 
 <link rel="stylesheet" href="style.css">
+
+<!-- Handwriting-style font for receipt entries, and html2canvas to export the receipt as a shareable image -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -38,6 +44,14 @@
         onclick="openInactivePage()"
     >
         Inactive Students
+    </button>
+
+    <button
+        class="inactive-home-btn"
+        onclick="openReceiptSearchModal()"
+        style="margin-top:10px;"
+    >
+        Receipt खोजें
     </button>
 
 </div>
@@ -285,6 +299,113 @@
 
     </div>
 
+</div>
+
+
+<!-- =====================================================
+     RECEIPT OVERLAY (form + generated image)
+===================================================== -->
+
+<div
+    class="overlay"
+    id="receiptOverlay"
+>
+
+    <div class="modal receipt-modal">
+
+        <h2>Receipt</h2>
+
+        <div id="receiptModalBody">
+        </div>
+
+        <div class="actions" id="receiptModalActions">
+
+            <button
+                class="btn-main"
+                onclick="generateReceipt()"
+            >
+                Receipt Generate करें
+            </button>
+
+            <button
+                class="btn-light"
+                onclick="closeReceiptModal()"
+            >
+                Close
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     RECEIPT TEMPLATE (rendered off-screen, captured as an
+     image — this is what actually gets shared/downloaded)
+===================================================== -->
+
+<div id="receiptTemplateWrap" class="receipt-template-wrap">
+    <div id="receiptTemplate" class="receipt-paper">
+
+        <div class="receipt-header">
+            <div class="receipt-logo">SC</div>
+            <div class="receipt-header-text">
+                <div class="receipt-title">Receipt</div>
+                <div class="receipt-org-name">SHADAB COACHING CENTER</div>
+                <div class="receipt-org-address">Near Khatopur Tower, Begusarai-851129</div>
+                <div class="receipt-org-mobile">M. : 6200765036 / 7870747713</div>
+            </div>
+        </div>
+
+        <div class="receipt-row">
+            <div class="receipt-field">Receipt No. : <span class="hw" id="rNo"></span></div>
+            <div class="receipt-field">Date : <span class="hw" id="rDate"></span></div>
+        </div>
+
+        <div class="receipt-field-line">Student's Name :<span class="hw" id="rStudentName"></span></div>
+        <div class="receipt-field-line">Father's Name :<span class="hw" id="rFatherName"></span></div>
+        <div class="receipt-field-line">Address :<span class="hw" id="rAddress"></span></div>
+
+        <div class="receipt-row">
+            <div class="receipt-field">Board :- CBSE/Bihar</div>
+            <div class="receipt-field">Class <span class="hw" id="rClass"></span></div>
+        </div>
+
+        <div class="receipt-field-line">Month :<span class="hw" id="rMonth"></span></div>
+
+        <table class="receipt-table">
+            <thead>
+                <tr><th class="sl-col">Sl.</th><th>Particulars</th><th class="amt-col">Amount</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1.</td><td>Admission Fee.</td><td class="hw" id="rAdmissionFee"></td></tr>
+                <tr><td>2.</td><td>Tution Fee.</td><td class="hw" id="rTuitionFee"></td></tr>
+                <tr><td>3.</td><td>Others Charges</td><td class="hw" id="rOthersCharges"></td></tr>
+            </tbody>
+            <tfoot>
+                <tr class="receipt-note-tr">
+                    <td colspan="2" class="receipt-note-cell">
+                        <div class="receipt-note-label">Please Note :-</div>
+                        <div class="hw receipt-note-text" id="rNote"></div>
+                    </td>
+                    <td class="receipt-total-cell">
+                        <div class="receipt-total-label">Total</div>
+                        <div class="hw" id="rTotal"></div>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="receipt-field-line">Total Rs. (in Words) <span class="hw" id="rTotalWords"></span></div>
+
+        <div class="receipt-footer">
+            <div class="receipt-footer-note">Note : All Dues must be paid on<br>10th of each month.</div>
+            <div class="receipt-signature">Signature<br>Director</div>
+        </div>
+
+    </div>
 </div>
 
 
@@ -605,6 +726,7 @@
 <script src="js/09-api-server.js"></script>
 <script src="js/10-fee-utils.js"></script>
 <script src="js/11-fee-ui.js"></script>
+<script src="js/12-receipt.js"></script>
 
 
 </body>

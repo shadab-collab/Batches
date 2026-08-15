@@ -78,7 +78,10 @@ function renderFeeCard(data) {
                     Due ₹${ c.amountDue } · Paid ₹${ c.paidSum }${ c.charitySum > 0 ? ` · Charity ₹${ c.charitySum }` : "" } · Remaining ₹${ c.remaining }
                 </div>
                 ${ c.lastDate ? `<div class="fee-row-sub">${ FeeUtils.formatDDMM(c.lastDate) }</div>` : "" }
-                ${ c.remaining > 0 ? `<div class="fee-row-actions"><button class="btn-light small-btn" onclick="openCharityModal('${ c.cycleKey }')">Charity</button></div>` : "" }
+                <div class="fee-row-actions">
+                    <button class="btn-light small-btn" onclick="openReceiptModal('${ c.cycleKey }')">Receipt बनाएं</button>
+                    ${ c.remaining > 0 ? `<button class="btn-light small-btn" onclick="openCharityModal('${ c.cycleKey }')">Charity</button>` : "" }
+                </div>
             </div>
         `).join("");
 
