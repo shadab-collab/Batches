@@ -66,15 +66,19 @@ function renderFeeCard(data) {
     ? profile.memberFees.map(m => `${ escapeHtml(m.studentId) }: ₹${ m.amount }`).join(", ")
     : `₹${ profile.amount }`;
 
+  const statusClass = c => c.status.toLowerCase().replace(/[\s/]+/g, "-");
+
   const cycleRows = data.cycles.slice().reverse().map(c => `
             <div class="fee-row">
                 <div class="fee-row-main">
                     <span>${ FeeUtils.formatCycleRange(c) }</span>
-                    <span class="fee-status fee-status-${ c.status.toLowerCase() }">${ c.status }</span>
+                    <span class="fee-status fee-status-${ statusClass(c) }">${ c.status }</span>
                 </div>
                 <div class="fee-row-sub">
-                    Due ₹${ c.amountDue } · Paid ₹${ c.paidSum } · Remaining ₹${ c.remaining }
+                    Due ₹${ c.amountDue } · Paid ₹${ c.paidSum }${ c.charitySum > 0 ? ` · Charity ₹${ c.charitySum }` : "" } · Remaining ₹${ c.remaining }
                 </div>
+                ${ c.lastDate ? `<div class="fee-row-sub">${ FeeUtils.formatDDMM(c.lastDate) }</div>` : "" }
+                ${ c.remaining > 0 ? `<div class="fee-row-actions"><button class="btn-light small-btn" onclick="openCharityModal('${ c.cycleKey }')">Charity</button></div>` : "" }
             </div>
         `).join("");
 
@@ -90,7 +94,13 @@ function renderFeeCard(data) {
         `
     : "";
 
+  const exitBanner = data.exitInfo
+    ? `<div class="fee-exit-banner">नाम कट गया <span>${ FeeUtils.formatDDMM(data.exitInfo.exitDate) }</span></div>`
+    : "";
+
   body.innerHTML = `
+        ${ exitBanner }
+
         <div class="fee-summary">
             <div><strong>Type:</strong> ${ modeLabel }</div>
             <div><strong>Amount:</strong> ${ amountLine }</div>
@@ -102,6 +112,7 @@ function renderFeeCard(data) {
         <div class="fee-actions">
             <button class="btn-main" onclick="openPaymentModal()">Record Payment</button>
             <button class="btn-light" onclick="openFeeSetupModal()">Edit Fee</button>
+            ${ !data.exitInfo ? '<button class="btn-danger" onclick="openMarkLeftModal()">नाम कट गया</button>' : "" }
         </div>
 
         <div class="fee-history">
@@ -124,6 +135,115 @@ async function markAdmissionFeePaid() {
     await loadFeeCard(currentFeeStudent);
   } catch (error) {
     alert("Update नहीं हो सका। इंटरनेट चेक करें।");
+  }
+}
+
+
+/* =====================================================
+   CHARITY MODAL (per-cycle fee waiver)
+===================================================== */
+function openCharityModal(cycleKey) {
+  const cycle = (currentFeeData.cycles || []).find(c => c.cycleKey === cycleKey);
+  if (!cycle) {
+    return;
+  }
+
+  const modal = document.getElementById("feeOverlay");
+  document.getElementById("feeModalTitle").textContent = "Charity दर्ज करें";
+
+  document.getElementById("feeModalBody").innerHTML = `
+        <div class="field">
+            <label>${ FeeUtils.formatCycleRange(cycle) } (बाकी ₹${ cycle.remaining })</label>
+            <input id="feeCharityCycleKey" type="hidden" value="${ cycleKey }">
+            <input id="feeCharityAmountInput" type="number" placeholder="Charity Amount (₹)">
+        </div>
+
+        <div class="field">
+            <label>Date</label>
+            <input id="feeCharityDateInput" type="date" value="${ new Date().toISOString().slice(0, 10) }">
+        </div>
+
+        <div class="field">
+            <label>Note (optional)</label>
+            <input id="feeCharityNoteInput" type="text">
+        </div>
+    `;
+
+  modal.style.display = "flex";
+}
+
+async function saveCharity() {
+  const owner = currentFeeOwner;
+  const cycleKey = document.getElementById("feeCharityCycleKey").value;
+  const amount = Number(document.getElementById("feeCharityAmountInput").value) || 0;
+  const date = document.getElementById("feeCharityDateInput").value;
+  const note = document.getElementById("feeCharityNoteInput").value;
+
+  if (amount <= 0) {
+    alert("Charity Amount भरें");
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/charity`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cycleKey, amount, date, note })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Charity Save नहीं हुई");
+      return;
+    }
+    closeFeeModal();
+    await loadFeeCard(currentFeeStudent);
+  } catch (error) {
+    alert("Charity Save नहीं हो सकी। इंटरनेट चेक करें।");
+  }
+}
+
+
+/* =====================================================
+   MARK LEFT MODAL ("नाम कट गया")
+===================================================== */
+function openMarkLeftModal() {
+  const modal = document.getElementById("feeOverlay");
+  document.getElementById("feeModalTitle").textContent = "नाम कट गया";
+
+  document.getElementById("feeModalBody").innerHTML = `
+        <div class="field">
+            <label>किस तारीख को नाम कटा</label>
+            <input id="feeExitDateInput" type="date" value="${ new Date().toISOString().slice(0, 10) }">
+        </div>
+        <div class="empty">इसके बाद इस Student/Family की आगे की Fee Cycle नहीं बनेगी। पुरानी History सुरक्षित रहेगी।</div>
+    `;
+
+  modal.style.display = "flex";
+}
+
+async function saveMarkLeft() {
+  const owner = currentFeeOwner;
+  const exitDate = document.getElementById("feeExitDateInput").value;
+  if (!exitDate) {
+    alert("तारीख भरें");
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/mark-left`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ exitDate })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Save नहीं हुआ");
+      return;
+    }
+    closeFeeModal();
+    await loadFeeCard(currentFeeStudent);
+  } catch (error) {
+    alert("Save नहीं हो सका। इंटरनेट चेक करें।");
   }
 }
 
@@ -399,6 +519,10 @@ function saveFeeModal() {
   const title = document.getElementById("feeModalTitle").textContent;
   if (title === "Payment दर्ज करें") {
     savePayment();
+  } else if (title === "Charity दर्ज करें") {
+    saveCharity();
+  } else if (title === "नाम कट गया") {
+    saveMarkLeft();
   } else {
     saveFeeProfile();
   }

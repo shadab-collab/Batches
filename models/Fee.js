@@ -77,6 +77,11 @@ const paymentSchema = new mongoose.Schema({
   ownerKey: { type: String, required: true },
   cycleKey: { type: String, required: true },
 
+  // "payment" = money actually received, "charity" = fee waived/forgiven.
+  // Older rows saved before this field existed have no `type` in the
+  // database — they are read back as "payment" (see routes/fees.js).
+  type: { type: String, enum: ["payment", "charity"], default: "payment" },
+
   amount: { type: Number, required: true },
   paymentDate: { type: String, required: true },
   note: { type: String, default: "" },
@@ -87,8 +92,26 @@ const paymentSchema = new mongoose.Schema({
 paymentSchema.index({ ownerType: 1, ownerKey: 1, cycleKey: 1 });
 
 
+/* =====================================================
+   FEE EXIT ("नाम कट गया")
+   Marks that a student/family stopped attending, from a given
+   date. Cycle generation stops at this date; all fee history
+   up to that point stays exactly as it was.
+===================================================== */
+const feeExitSchema = new mongoose.Schema({
+
+  ownerType: { type: String, enum: ["student", "family"], required: true },
+  ownerKey: { type: String, required: true },
+  exitDate: { type: String, required: true }
+
+}, { timestamps: true });
+
+feeExitSchema.index({ ownerType: 1, ownerKey: 1 }, { unique: true });
+
+
 const FeeProfile = mongoose.model("FeeProfile", feeProfileSchema);
 const FeeCycle = mongoose.model("FeeCycle", feeCycleSchema);
 const Payment = mongoose.model("Payment", paymentSchema);
+const FeeExit = mongoose.model("FeeExit", feeExitSchema);
 
-module.exports = { FeeProfile, FeeCycle, Payment };
+module.exports = { FeeProfile, FeeCycle, Payment, FeeExit };

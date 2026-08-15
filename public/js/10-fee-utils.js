@@ -131,7 +131,11 @@
     return cycles;
   }
 
-  function computeCycleStatus(amountDue, paidSum) {
+  function computeCycleStatus(amountDue, paidSum, charitySum) {
+    const charity = charitySum || 0;
+    if (charity > 0) {
+      return paidSum > 0 ? "Partial / Charity" : "Charity";
+    }
     if (paidSum <= 0) {
       return "Unpaid";
     }
@@ -142,6 +146,36 @@
       return "Paid";
     }
     return "Advance";
+  }
+
+  /* The cycle whose period (cycleStart..cycleEnd) contains the given date.
+     Used to find the last cycle a student should still be billed for when
+     they leave mid-cycle. */
+  function getCycleContaining(dueDateType, dateIso) {
+    const d = parseISODate(dateIso);
+    let year = d.year;
+    let month = d.month;
+    let cycle = cycleForMonth(dueDateType, year, month);
+
+    while (compareISODate(cycle.cycleEnd, dateIso) < 0) {
+      const next = nextMonth(year, month);
+      year = next.year;
+      month = next.month;
+      cycle = cycleForMonth(dueDateType, year, month);
+    }
+    while (compareISODate(cycle.cycleStart, dateIso) > 0) {
+      const prev = prevMonth(year, month);
+      year = prev.year;
+      month = prev.month;
+      cycle = cycleForMonth(dueDateType, year, month);
+    }
+
+    return cycle;
+  }
+
+  function formatDDMM(iso) {
+    const { month, day } = parseISODate(iso);
+    return `${ pad2(day) }/${ pad2(month) }`;
   }
 
   const HINDI_MONTHS = [
@@ -176,6 +210,8 @@
     getFirstCycleOnOrAfter,
     listCycles,
     computeCycleStatus,
+    getCycleContaining,
+    formatDDMM,
     formatHindiDate,
     formatCycleRange
   };

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
 
-const { FeeProfile, FeeCycle, Payment } = require("../models/Fee");
+const { FeeProfile, FeeCycle, Payment, FeeExit } = require("../models/Fee");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
 
@@ -32,15 +32,28 @@ function amountForProfile(profile) {
 }
 
 /* Make sure a FeeCycle row exists for every cycle from the owner's first
-   cycle up to the current due cycle. Never overwrites an existing row's
-   amountDue (that stays locked once created). */
-async function ensureCycles(ownerType, ownerKey, profiles) {
+   cycle up to the current due cycle (or, if the owner has left, up to the
+   last cycle their leaving date actually falls within). Never overwrites
+   an existing row's amountDue (that stays locked once created). */
+async function ensureCycles(ownerType, ownerKey, profiles, exitDate) {
   const dueDateType = profiles[0].dueDateType;
   const joiningIso = profiles[0].joiningDate || profiles[0].effectiveFrom;
 
   const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
-  const currentCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
-  const allCycles = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, currentCycle.cycleKey);
+  let lastCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
+
+  if (exitDate) {
+    const exitCycle = FeeUtils.getCycleContaining(dueDateType, exitDate);
+    if (FeeUtils.compareISODate(exitCycle.cycleKey, lastCycle.cycleKey) < 0) {
+      lastCycle = exitCycle;
+    }
+  }
+
+  if (FeeUtils.compareISODate(firstCycle.cycleKey, lastCycle.cycleKey) > 0) {
+    return [];
+  }
+
+  const allCycles = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, lastCycle.cycleKey);
 
   for (const c of allCycles) {
     const profile = profileForCycle(profiles, c.cycleKey);
@@ -83,7 +96,10 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
       return res.json({ success: true, hasProfile: false });
     }
 
-    await ensureCycles(ownerType, ownerKey, profiles);
+    const exitRecord = await FeeExit.findOne({ ownerType, ownerKey }).lean();
+    const exitDate = exitRecord ? exitRecord.exitDate : null;
+
+    await ensureCycles(ownerType, ownerKey, profiles, exitDate);
 
     const cycles = await FeeCycle.find({ ownerType, ownerKey })
       .sort({ cycleKey: 1 })
@@ -94,14 +110,23 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
       .lean();
 
     const paidByCycle = {};
+    const charityByCycle = {};
+    const lastDateByCycle = {};
     for (const p of payments) {
-      paidByCycle[p.cycleKey] = (paidByCycle[p.cycleKey] || 0) + p.amount;
+      const isCharity = p.type === "charity";
+      const bucket = isCharity ? charityByCycle : paidByCycle;
+      bucket[p.cycleKey] = (bucket[p.cycleKey] || 0) + p.amount;
+      // track the latest date touching this cycle, payment or charity alike
+      if (!lastDateByCycle[p.cycleKey] || p.paymentDate > lastDateByCycle[p.cycleKey]) {
+        lastDateByCycle[p.cycleKey] = p.paymentDate;
+      }
     }
 
     let totalDue = 0;
     const cycleSummaries = cycles.map(c => {
       const paidSum = paidByCycle[c.cycleKey] || 0;
-      const remaining = c.amountDue - paidSum;
+      const charitySum = charityByCycle[c.cycleKey] || 0;
+      const remaining = c.amountDue - paidSum - charitySum;
       if (remaining > 0) {
         totalDue += remaining;
       }
@@ -112,8 +137,10 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
         cycleEnd: c.cycleEnd,
         amountDue: c.amountDue,
         paidSum,
+        charitySum,
         remaining,
-        status: FeeUtils.computeCycleStatus(c.amountDue, paidSum)
+        lastDate: lastDateByCycle[c.cycleKey] || null,
+        status: FeeUtils.computeCycleStatus(c.amountDue, paidSum, charitySum)
       };
     });
 
@@ -126,7 +153,8 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
       profileHistory: profiles,
       cycles: cycleSummaries,
       payments,
-      totalDue
+      totalDue,
+      exitInfo: exitRecord ? { exitDate: exitRecord.exitDate } : null
     });
 
   } catch (error) {
@@ -276,6 +304,70 @@ router.post("/:ownerType/:ownerKey/admission-fee-paid", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Update नहीं हुआ" });
+  }
+});
+
+
+/* =====================================================
+   RECORD CHARITY  /api/fees/:ownerType/:ownerKey/charity
+   Body: { cycleKey, amount, date, note }
+   A fee waiver for one specific cycle — stored the same way as
+   a payment (immutable log row) but tagged type:"charity" so it
+   never counts as money received, only as amount forgiven.
+===================================================== */
+router.post("/:ownerType/:ownerKey/charity", async (req, res) => {
+  const { ownerType, ownerKey } = req.params;
+  const { cycleKey, amount, date, note } = req.body;
+
+  if (!cycleKey || typeof amount !== "number" || amount <= 0 || !date) {
+    return res.status(400).json({ success: false, message: "cycleKey, amount और date जरूरी हैं" });
+  }
+
+  try {
+    await Payment.create({
+      ownerType,
+      ownerKey,
+      cycleKey,
+      type: "charity",
+      amount,
+      paymentDate: date,
+      note: note || "",
+      transactionId: crypto.randomBytes(8).toString("hex")
+    });
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Charity Save नहीं हुई" });
+  }
+});
+
+
+/* =====================================================
+   MARK LEFT ("नाम कट गया")  /api/fees/:ownerType/:ownerKey/mark-left
+   Body: { exitDate }
+   Stops future fee cycles from being generated. All fee
+   history up to the exit date stays exactly as it was.
+===================================================== */
+router.post("/:ownerType/:ownerKey/mark-left", async (req, res) => {
+  const { ownerType, ownerKey } = req.params;
+  const { exitDate } = req.body;
+
+  if (!exitDate) {
+    return res.status(400).json({ success: false, message: "exitDate जरूरी है" });
+  }
+
+  try {
+    await FeeExit.findOneAndUpdate(
+      { ownerType, ownerKey },
+      { $set: { ownerType, ownerKey, exitDate } },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Save नहीं हुआ" });
   }
 });
 

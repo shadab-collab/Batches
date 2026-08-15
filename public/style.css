@@ -697,6 +697,31 @@ button{
     color:#1a56db
 }
 
+.fee-status-charity{
+    background:#f1e9fb;
+    color:#7b2ff7
+}
+
+.fee-status-partial-charity{
+    background:#f1e9fb;
+    color:#7b2ff7
+}
+
+.fee-row-actions{
+    margin-top:6px
+}
+
+.fee-exit-banner{
+    background:#fde8e8;
+    color:#c0392b;
+    font-weight:700;
+    text-align:center;
+    padding:10px;
+    display:flex;
+    justify-content:center;
+    gap:8px
+}
+
 .fee-member-input{
     display:flex;
     justify-content:space-between;
