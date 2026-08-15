@@ -69,7 +69,7 @@ function renderFeeCard(data) {
   const cycleRows = data.cycles.slice().reverse().map(c => `
             <div class="fee-row">
                 <div class="fee-row-main">
-                    <span>${ c.cycleStart } → ${ c.cycleEnd }</span>
+                    <span>${ FeeUtils.formatCycleRange(c) }</span>
                     <span class="fee-status fee-status-${ c.status.toLowerCase() }">${ c.status }</span>
                 </div>
                 <div class="fee-row-sub">
@@ -78,11 +78,24 @@ function renderFeeCard(data) {
             </div>
         `).join("");
 
+  const admissionFeeLine = profile.admissionFeeAmount > 0
+    ? `
+            <div class="fee-admission-row">
+                Admission Fee: ₹${ profile.admissionFeeAmount }
+                ${ profile.admissionFeePaid
+                  ? '<span class="fee-status fee-status-paid">Paid</span>'
+                  : '<span class="fee-status fee-status-unpaid">Pending</span><button class="btn-light small-btn" onclick="markAdmissionFeePaid()">Paid Mark करें</button>'
+                }
+            </div>
+        `
+    : "";
+
   body.innerHTML = `
         <div class="fee-summary">
             <div><strong>Type:</strong> ${ modeLabel }</div>
             <div><strong>Amount:</strong> ${ amountLine }</div>
             <div><strong>Due Date:</strong> ${ profile.dueDateType } हर महीने</div>
+            ${ admissionFeeLine }
             <div class="fee-total-due">Total Due: ₹${ data.totalDue }</div>
         </div>
 
@@ -95,6 +108,23 @@ function renderFeeCard(data) {
             ${ cycleRows || '<div class="empty">कोई cycle नहीं</div>' }
         </div>
     `;
+}
+
+async function markAdmissionFeePaid() {
+  const owner = currentFeeOwner;
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/admission-fee-paid`, {
+      method: "POST"
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Update नहीं हुआ");
+      return;
+    }
+    await loadFeeCard(currentFeeStudent);
+  } catch (error) {
+    alert("Update नहीं हो सका। इंटरनेट चेक करें।");
+  }
 }
 
 
@@ -155,7 +185,7 @@ function openFeeSetupModal() {
 
         <div class="field">
             <label>Due Date</label>
-            <select id="feeDueDateSelect">
+            <select id="feeDueDateSelect" ${ !hasProfile ? 'onchange="updateFirstCyclePreview()"' : "" }>
                 <option value="1" ${ profile && profile.dueDateType === 1 ? "selected" : "" }>1 तारीख</option>
                 <option value="15" ${ profile && profile.dueDateType === 15 ? "selected" : "" }>15 तारीख</option>
             </select>
@@ -164,7 +194,24 @@ function openFeeSetupModal() {
         ${ !hasProfile ? `
         <div class="field">
             <label>Joining Date</label>
-            <input id="feeJoiningDateInput" type="date">
+            <input id="feeJoiningDateInput" type="date" onchange="updateFirstCyclePreview()">
+        </div>
+
+        <div class="field">
+            <label>
+                <input type="checkbox" id="feePushFirstCycle" onchange="updateFirstCyclePreview()">
+                पहली Fee एक Cycle बाद से लूं (देर से join होने पर)
+            </label>
+            <div class="empty" id="firstCyclePreview" style="text-align:left;padding:4px 0;"></div>
+        </div>
+
+        <div class="field">
+            <label>Admission Fee (₹, optional)</label>
+            <input id="feeAdmissionAmountInput" type="number" placeholder="0">
+            <label style="margin-top:6px;">
+                <input type="checkbox" id="feeAdmissionPaidInput">
+                अभी Paid हो गई
+            </label>
         </div>
         ` : "" }
 
@@ -175,6 +222,31 @@ function openFeeSetupModal() {
 
   modal.style.display = "flex";
   toggleFeeModeFields();
+  if (!hasProfile) {
+    updateFirstCyclePreview();
+  }
+}
+
+function updateFirstCyclePreview() {
+  const preview = document.getElementById("firstCyclePreview");
+  const joiningInput = document.getElementById("feeJoiningDateInput");
+  if (!preview || !joiningInput || !joiningInput.value) {
+    if (preview) {
+      preview.textContent = "";
+    }
+    return;
+  }
+  const dueDateType = Number(document.getElementById("feeDueDateSelect").value);
+  const pushOne = document.getElementById("feePushFirstCycle").checked;
+  let cycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningInput.value);
+  if (pushOne) {
+    const after = FeeUtils.nextMonth(
+      FeeUtils.parseISODate(cycle.cycleKey).year,
+      FeeUtils.parseISODate(cycle.cycleKey).month
+    );
+    cycle = FeeUtils.cycleForMonth(dueDateType, after.year, after.month);
+  }
+  preview.textContent = `पहली Fee Cycle: ${ FeeUtils.formatCycleRange(cycle) }`;
 }
 
 function toggleFeeModeFields() {
@@ -219,6 +291,9 @@ async function saveFeeProfile() {
       return;
     }
     body.joiningDate = joiningInput.value;
+    body.pushFirstCycle = document.getElementById("feePushFirstCycle").checked;
+    body.admissionFeeAmount = Number(document.getElementById("feeAdmissionAmountInput").value) || 0;
+    body.admissionFeePaid = document.getElementById("feeAdmissionPaidInput").checked;
   }
 
   try {
@@ -253,7 +328,7 @@ function openPaymentModal() {
   const cycleRowsHtml = dueCycles.length
     ? dueCycles.map(c => `
             <div class="fee-member-input">
-                <span>${ c.cycleStart } → ${ c.cycleEnd } (बाकी ₹${ c.remaining })</span>
+                <span>${ FeeUtils.formatCycleRange(c) } (बाकी ₹${ c.remaining })</span>
                 <input type="number" class="fee-payment-amount" data-cycle-key="${ c.cycleKey }" placeholder="0">
             </div>
         `).join("")

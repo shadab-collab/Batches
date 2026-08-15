@@ -88,15 +88,19 @@
     return cycleForMonth(dueDateType, year, month);
   }
 
-  /* The first cycle whose due date falls on/after the joining date —
-     a student is never charged for a cycle that came due before they joined. */
+  /* The first cycle whose PERIOD (cycleStart..cycleEnd) covers the joining
+     date or comes after it — a student is never charged for a cycle whose
+     entire period already finished before they joined. (Comparing against
+     cycleEnd, not dueDate, matters when someone joins exactly on a due day:
+     e.g. joining on the 15th with dueDateType 15 must NOT match the cycle
+     that ends the day before, on the 14th.) */
   function getFirstCycleOnOrAfter(dueDateType, joiningIso) {
     const j = parseISODate(joiningIso);
     let year = j.year;
     let month = j.month;
     let cycle = cycleForMonth(dueDateType, year, month);
 
-    while (compareISODate(cycle.dueDate, joiningIso) < 0) {
+    while (compareISODate(cycle.cycleEnd, joiningIso) < 0) {
       const next = nextMonth(year, month);
       year = next.year;
       month = next.month;
@@ -140,6 +144,24 @@
     return "Advance";
   }
 
+  const HINDI_MONTHS = [
+    "जनवरी", "फरवरी", "मार्च", "अप्रैल", "मई", "जून",
+    "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"
+  ];
+
+  function formatHindiDate(iso) {
+    const { year, month, day } = parseISODate(iso);
+    return `${ day } ${ HINDI_MONTHS[month - 1] } ${ year }`;
+  }
+
+  /* Display label for a cycle: start date to the NEXT due date (not the
+     internal cycleEnd, which is one day earlier) — e.g. "15 मार्च 2026 से
+     15 अप्रैल 2026 तक", matching how the coaching owner actually thinks
+     about the period. */
+  function formatCycleRange(cycle) {
+    return `${ formatHindiDate(cycle.cycleStart) } से ${ formatHindiDate(cycle.dueDate) } तक`;
+  }
+
   return {
     pad2,
     toISODate,
@@ -153,7 +175,9 @@
     getCurrentCycle,
     getFirstCycleOnOrAfter,
     listCycles,
-    computeCycleStatus
+    computeCycleStatus,
+    formatHindiDate,
+    formatCycleRange
   };
 
 });

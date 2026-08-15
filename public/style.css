@@ -625,6 +625,13 @@ button{
     color:#c0392b
 }
 
+.fee-admission-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:6px
+}
+
 .fee-actions{
     display:flex;
     gap:8px;

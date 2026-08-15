@@ -145,7 +145,7 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
 ===================================================== */
 router.post("/:ownerType/:ownerKey/profile", async (req, res) => {
   const { ownerType, ownerKey } = req.params;
-  const { feeMode, amount, memberFees, dueDateType, joiningDate } = req.body;
+  const { feeMode, amount, memberFees, dueDateType, joiningDate, pushFirstCycle, admissionFeeAmount, admissionFeePaid } = req.body;
 
   if (!["fixed", "individual", "total"].includes(feeMode)) {
     return res.status(400).json({ success: false, message: "Invalid feeMode" });
@@ -163,7 +163,18 @@ router.post("/:ownerType/:ownerKey/profile", async (req, res) => {
       if (!joiningDate) {
         return res.status(400).json({ success: false, message: "joiningDate is required for a new profile" });
       }
-      effectiveFrom = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningDate).cycleKey;
+      let firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningDate);
+      // admin can push the first billed cycle one step further out —
+      // used when the student joined too close to the auto-picked due
+      // date to fairly bill from it (e.g. joined a few days before it)
+      if (pushFirstCycle) {
+        const after = FeeUtils.nextMonth(
+          FeeUtils.parseISODate(firstCycle.cycleKey).year,
+          FeeUtils.parseISODate(firstCycle.cycleKey).month
+        );
+        firstCycle = FeeUtils.cycleForMonth(dueDateType, after.year, after.month);
+      }
+      effectiveFrom = firstCycle.cycleKey;
     } else {
       const active = existing.find(p => p.effectiveTo === null);
       const currentCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
@@ -188,6 +199,8 @@ router.post("/:ownerType/:ownerKey/profile", async (req, res) => {
       memberFees: Array.isArray(memberFees) ? memberFees : [],
       dueDateType,
       joiningDate: existing.length ? existing[0].joiningDate : joiningDate,
+      admissionFeeAmount: existing.length ? existing[0].admissionFeeAmount : (admissionFeeAmount || 0),
+      admissionFeePaid: existing.length ? existing[0].admissionFeePaid : !!admissionFeePaid,
       effectiveFrom,
       effectiveTo: null
     });
@@ -240,6 +253,29 @@ router.post("/:ownerType/:ownerKey/payment", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Could not record payment" });
+  }
+});
+
+
+/* =====================================================
+   MARK ADMISSION FEE AS PAID
+   /api/fees/:ownerType/:ownerKey/admission-fee-paid
+   One-time metadata update — not a cycle amount, so it's
+   fine to update in place (only touches the first profile row).
+===================================================== */
+router.post("/:ownerType/:ownerKey/admission-fee-paid", async (req, res) => {
+  const { ownerType, ownerKey } = req.params;
+
+  try {
+    const first = await FeeProfile.findOne({ ownerType, ownerKey }).sort({ effectiveFrom: 1 });
+    if (!first) {
+      return res.status(404).json({ success: false, message: "Fee profile नहीं मिला" });
+    }
+    await FeeProfile.updateMany({ ownerType, ownerKey }, { $set: { admissionFeePaid: true } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Update नहीं हुआ" });
   }
 });
 

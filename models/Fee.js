@@ -27,6 +27,11 @@ const feeProfileSchema = new mongoose.Schema({
   dueDateType: { type: Number, enum: [1, 15], required: true },
   joiningDate: { type: String }, // ISO date, only meaningful on the first profile row
 
+  // one-time admission fee, only meaningful on the first profile row —
+  // separate from the monthly cycle system entirely
+  admissionFeeAmount: { type: Number, default: 0 },
+  admissionFeePaid: { type: Boolean, default: false },
+
   effectiveFrom: { type: String, required: true }, // cycleKey (ISO date) this version starts applying from
   effectiveTo: { type: String, default: null } // cycleKey it stopped applying at, null = still active
 
