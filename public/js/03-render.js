@@ -1,15 +1,3 @@
-   FORMAT TIME
-===================================================== */
-function formatTime(t) {
-  if (!t) {
-    return "Time Set";
-  }
-  const [h, m] = t.split(":");
-  let hour = Number(h);
-  const ampm = hour >= 12 ? "PM" : "AM";
-  hour = hour % 12 || 12;
-  return `${ hour }:${ m } ${ ampm }`;
-}
 /* =====================================================
    RENDER
 ===================================================== */
@@ -102,4 +90,3 @@ function updateInactiveButton() {
     button.textContent = "Inactive Students";
   }
 }
-/* =====================================================

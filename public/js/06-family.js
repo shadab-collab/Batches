@@ -1,3 +1,4 @@
+/* =====================================================
    FAMILY PROFILE
 ===================================================== */
 function updateFamilyProfile(student) {
@@ -165,4 +166,3 @@ function removeStudentFromFamily() {
   updateFamilyProfile(student);
   render();
 }
-/* =====================================================

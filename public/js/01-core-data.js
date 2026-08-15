@@ -213,5 +213,3 @@ function normalizeAllData() {
     return true;
   });
 }
-/* =====================================================
-   LOAD LOCAL DATA

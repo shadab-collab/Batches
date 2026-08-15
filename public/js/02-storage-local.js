@@ -1,3 +1,5 @@
+/* =====================================================
+   LOAD LOCAL DATA
 ===================================================== */
 const savedVersion = localStorage.getItem("batchManagerDataVersion");
 if (savedVersion !== DATA_VERSION) {
@@ -52,3 +54,15 @@ function saveData() {
   }
 }
 /* =====================================================
+   FORMAT TIME
+===================================================== */
+function formatTime(t) {
+  if (!t) {
+    return "Time Set";
+  }
+  const [h, m] = t.split(":");
+  let hour = Number(h);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${ hour }:${ m } ${ ampm }`;
+}

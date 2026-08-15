@@ -1,3 +1,4 @@
+/* =====================================================
    SEND STUDENT TO INACTIVE
 ===================================================== */
 function sendStudentToInactive() {
@@ -201,4 +202,3 @@ function reactivateStudent(index) {
   renderInactiveStudents();
   render();
 }
-/* =====================================================

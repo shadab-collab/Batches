@@ -1,3 +1,6 @@
+/* =====================================================
+   LOAD BATCHES FROM SERVER
+===================================================== */
 async function loadBatchesFromServer() {
   try {
     const response = await fetch("/api/batches");

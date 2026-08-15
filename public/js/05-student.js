@@ -1,3 +1,4 @@
+/* =====================================================
    MOVE UP
 ===================================================== */
 function moveUp(index) {
@@ -60,4 +61,3 @@ function openStudentProfile(bi, si) {
   document.getElementById("studentProfilePage").style.display = "block";
   window.scrollTo(0, 0);
 }
-/* =====================================================
