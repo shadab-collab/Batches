@@ -30,6 +30,8 @@ let currentReceiptCycle = null;
 let currentReceiptOwner = null;
 let generatedReceiptBlob = null;
 let generatedReceiptNo = null;
+let browseMode = false;
+let browseReceiptNo = null;
 
 
 /* =====================================================
@@ -49,10 +51,18 @@ function openReceiptModal(cycleKey) {
   const defaultAmount = cycle ? cycle.paidSum : "";
   const defaultDate = (cycle && cycle.lastDate) ? cycle.lastDate : new Date().toISOString().slice(0, 10);
 
+  let defaultName = student.name;
+  if (owner.ownerType === "family") {
+    const members = getFamilyMembers(owner.ownerKey);
+    if (members.length) {
+      defaultName = members.map(m => m.student.name).join(" + ");
+    }
+  }
+
   document.getElementById("receiptModalBody").innerHTML = `
         <div class="field">
             <label>Student's Name</label>
-            <input id="rfStudentName" type="text" value="${ escapeHtml(student.name) }">
+            <input id="rfStudentName" type="text" value="${ escapeHtml(defaultName) }">
         </div>
         <div class="field">
             <label>Father's Name</label>
@@ -120,6 +130,7 @@ function recalcReceiptTotal() {
 ===================================================== */
 async function generateReceipt() {
   const owner = currentReceiptOwner;
+  browseMode = false;
 
   const total = Number(document.getElementById("rfTotal").value) || 0;
   if (total <= 0) {
@@ -189,9 +200,19 @@ async function renderAndShowReceipt(receipt) {
     `;
 
   try {
-    const canvas = await html2canvas(document.getElementById("receiptTemplate"), {
+    const el = document.getElementById("receiptTemplate");
+    const rect = el.getBoundingClientRect();
+    // target the longer edge at Full-HD pixel count or above, without ever
+    // stretching/distorting — a uniform scale keeps the exact same
+    // width:height ratio as the on-screen template, just at higher resolution
+    const longerEdge = Math.max(rect.width, rect.height);
+    const scale = Math.min(4, Math.max(2.5, 1920 / longerEdge));
+
+    const canvas = await html2canvas(el, {
       backgroundColor: "#f4c4d3",
-      scale: 2.5
+      scale,
+      useCORS: true,
+      letterRendering: true
     });
     canvas.toBlob(blob => {
       generatedReceiptBlob = blob;
@@ -203,8 +224,18 @@ async function renderAndShowReceipt(receipt) {
 }
 
 function showReceiptPreview(receiptNo, blob) {
+  browseReceiptNo = receiptNo;
   const url = URL.createObjectURL(blob);
   const modalBody = document.getElementById("receiptModalBody");
+
+  const navHtml = browseMode
+    ? `
+            <div class="receipt-share-actions">
+                <button class="btn-light" onclick="navigateReceipt(-1)">पिछला</button>
+                <button class="btn-light" onclick="navigateReceipt(1)">अगला</button>
+            </div>
+        `
+    : "";
 
   modalBody.innerHTML = `
         <div class="receipt-search-result">
@@ -214,12 +245,29 @@ function showReceiptPreview(receiptNo, blob) {
                 <a class="btn-main" download="Receipt-${ receiptNo }.png" href="${ url }">Download</a>
                 <button class="btn-light" onclick="shareReceiptImage(${ receiptNo })">Share</button>
             </div>
+            ${ navHtml }
         </div>
     `;
 
   document.getElementById("receiptModalActions").innerHTML = `
         <button class="btn-light" onclick="closeReceiptModal()">Close</button>
     `;
+}
+
+async function navigateReceipt(delta) {
+  const target = browseReceiptNo + delta;
+  try {
+    const res = await fetch(`/api/receipts/${ target }`);
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "अब कोई Receipt नहीं है");
+      return;
+    }
+    browseMode = true;
+    await renderAndShowReceipt(data.receipt);
+  } catch (error) {
+    alert("Load नहीं हो सका। इंटरनेट चेक करें।");
+  }
 }
 
 async function shareReceiptImage(receiptNo) {
@@ -241,4 +289,74 @@ async function shareReceiptImage(receiptNo) {
 
 function closeReceiptModal() {
   document.getElementById("receiptOverlay").style.display = "none";
+}
+
+
+/* =====================================================
+   SEARCH RECEIPTS BY DATE
+===================================================== */
+function openReceiptSearchModal() {
+  browseMode = false;
+
+  document.getElementById("receiptModalBody").innerHTML = `
+        <div class="field">
+            <label>Date चुनें</label>
+            <input id="rsDate" type="date" value="${ new Date().toISOString().slice(0, 10) }">
+        </div>
+        <div id="rsResults"></div>
+    `;
+  document.getElementById("receiptModalActions").innerHTML = `
+        <button class="btn-main" onclick="searchReceiptsByDate()">खोजें</button>
+        <button class="btn-light" onclick="closeReceiptModal()">Close</button>
+    `;
+  document.getElementById("receiptOverlay").style.display = "flex";
+}
+
+async function searchReceiptsByDate() {
+  const date = document.getElementById("rsDate").value;
+  if (!date) {
+    alert("Date चुनें");
+    return;
+  }
+
+  const resultsBox = document.getElementById("rsResults");
+  resultsBox.innerHTML = `<div class="empty">खोजा जा रहा है...</div>`;
+
+  try {
+    const res = await fetch(`/api/receipts/by-date/${ date }`);
+    const data = await res.json();
+    if (!data.success) {
+      resultsBox.innerHTML = `<div class="empty">${ escapeHtml(data.message || "Error") }</div>`;
+      return;
+    }
+    if (!data.receipts.length) {
+      resultsBox.innerHTML = `<div class="empty">इस Date पर कोई Receipt नहीं मिली</div>`;
+      return;
+    }
+    resultsBox.innerHTML = data.receipts.map(r => `
+            <div class="fee-row" onclick="startBrowseAt(${ r.receiptNo })" style="cursor:pointer;">
+                <div class="fee-row-main">
+                    <span>Receipt No. ${ r.receiptNo } — ${ escapeHtml(r.studentName) }</span>
+                    <span>₹${ r.total }</span>
+                </div>
+            </div>
+        `).join("");
+  } catch (error) {
+    resultsBox.innerHTML = `<div class="empty">खोज नहीं हो सकी। इंटरनेट चेक करें।</div>`;
+  }
+}
+
+async function startBrowseAt(receiptNo) {
+  try {
+    const res = await fetch(`/api/receipts/${ receiptNo }`);
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Receipt नहीं मिली");
+      return;
+    }
+    browseMode = true;
+    await renderAndShowReceipt(data.receipt);
+  } catch (error) {
+    alert("Load नहीं हो सका। इंटरनेट चेक करें।");
+  }
 }

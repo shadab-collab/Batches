@@ -918,7 +918,8 @@ button{
 
 .receipt-note-cell{
     vertical-align:top;
-    height:130px
+    min-height:200px;
+    height:auto
 }
 
 .receipt-note-label{
@@ -928,7 +929,10 @@ button{
 
 .receipt-note-text{
     font-size:23px;
-    white-space:pre-wrap
+    line-height:1.5;
+    white-space:pre-wrap;
+    word-break:break-word;
+    overflow-wrap:break-word
 }
 
 .receipt-total-cell{

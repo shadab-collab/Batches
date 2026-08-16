@@ -216,12 +216,12 @@ function openFeeSetupModal() {
                 <label>हर बच्चे की Fee (₹)</label>
                 ${ members.map(m => {
                   const existing = profile && profile.feeMode === "individual"
-                    ? (profile.memberFees.find(x => x.studentId === m.id) || {}).amount
+                    ? (profile.memberFees.find(x => x.studentId === m.student.id) || {}).amount
                     : "";
                   return `
                         <div class="fee-member-input">
-                            <span>${ escapeHtml(m.name) }</span>
-                            <input type="number" class="fee-member-amount" data-student-id="${ m.id }" value="${ existing || "" }" placeholder="0">
+                            <span>${ escapeHtml(m.student.name) }</span>
+                            <input type="number" class="fee-member-amount" data-student-id="${ m.student.id }" value="${ existing || "" }" placeholder="0">
                         </div>
                     `;
                 }).join("") }

@@ -83,6 +83,25 @@ router.get("/owner/:ownerType/:ownerKey", async (req, res) => {
 
 
 /* =====================================================
+   LIST RECEIPTS FOR A DATE  GET /api/receipts/by-date/:date
+   (defined before /:receiptNo so it isn't shadowed)
+===================================================== */
+router.get("/by-date/:date", async (req, res) => {
+  const { date } = req.params;
+
+  try {
+    const receipts = await Receipt.find({ date })
+      .sort({ receiptNo: 1 })
+      .lean();
+    res.json({ success: true, receipts });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Load नहीं हो सका" });
+  }
+});
+
+
+/* =====================================================
    LOOKUP BY RECEIPT NUMBER  GET /api/receipts/:receiptNo
 ===================================================== */
 router.get("/:receiptNo", async (req, res) => {
