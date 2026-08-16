@@ -405,6 +405,66 @@
 
 
 <!-- =====================================================
+     REMINDER OVERLAY
+===================================================== -->
+
+<div
+    class="overlay"
+    id="reminderOverlay"
+>
+
+    <div class="modal receipt-modal">
+
+        <h2>Fee Reminder</h2>
+
+        <div id="reminderModalBody">
+        </div>
+
+        <div class="actions" id="reminderModalActions">
+
+            <button
+                class="btn-main"
+                onclick="generateReminder()"
+            >
+                Reminder Generate करें
+            </button>
+
+            <button
+                class="btn-light"
+                onclick="closeReminderModal()"
+            >
+                Close
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     REMINDER TEMPLATE (rendered off-screen, captured as an
+     image — plain WhatsApp-message style, matching the
+     coaching center's own reminder wording exactly)
+===================================================== -->
+
+<div id="reminderTemplateWrap" class="reminder-template-wrap">
+    <div id="reminderTemplate" class="reminder-paper">
+        <div class="reminder-text">
+            <p>अभिभावक कृपया ध्यान देंगे, <b>SHADAB COACHING CENTER</b> की ओर से।</p>
+            <p>
+                <b id="rmNames"></b> का <b id="rmDates"></b> को महीना लग गया है, इस प्रकार
+                <span id="rmCollective"></span> कुल <b id="rmMonths"></b> का फीस बाकी है।
+                कृपया इसे जल्द से जल्द क्लियर करने का कष्ट करें।
+            </p>
+            <p>शुक्रिया।</p>
+        </div>
+    </div>
+</div>
+
+
+<!-- =====================================================
      STUDENT PROFILE PAGE
 ===================================================== -->
 
@@ -722,6 +782,7 @@
 <script src="js/10-fee-utils.js"></script>
 <script src="js/11-fee-ui.js"></script>
 <script src="js/12-receipt.js"></script>
+<script src="js/13-reminder.js"></script>
 
 
 </body>

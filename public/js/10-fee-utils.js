@@ -188,6 +188,45 @@
     return `${ day } ${ HINDI_MONTHS[month - 1] } ${ year }`;
   }
 
+  /* Same as formatHindiDate but without the year — matches the coaching
+     owner's fee-reminder wording, e.g. "15 जून" */
+  function formatHindiDateShort(iso) {
+    const { month, day } = parseISODate(iso);
+    return `${ day } ${ HINDI_MONTHS[month - 1] }`;
+  }
+
+  /* Joins a list the way the owner writes names/dates in reminders:
+     one item as-is; two as "A और B"; three or more as "A, B और C" */
+  function joinHindiList(items) {
+    if (items.length === 0) {
+      return "";
+    }
+    if (items.length === 1) {
+      return items[0];
+    }
+    if (items.length === 2) {
+      return `${ items[0] } और ${ items[1] }`;
+    }
+    return `${ items.slice(0, -1).join(", ") } और ${ items[items.length - 1] }`;
+  }
+
+  const HINDI_COLLECTIVE_WORDS = {
+    1: "इनका",
+    2: "इन दोनों का",
+    3: "इन तीनों का",
+    4: "इन चारों का",
+    5: "इन पांचों का",
+    6: "इन छहों का",
+    7: "इन सातों का",
+    8: "इन आठों का",
+    9: "इन नौओं का",
+    10: "इन दसों का"
+  };
+
+  function hindiCollectiveWord(count) {
+    return HINDI_COLLECTIVE_WORDS[count] || "इन सबका";
+  }
+
   /* Display label for a cycle: start date to the NEXT due date (not the
      internal cycleEnd, which is one day earlier) — e.g. "15 मार्च 2026 से
      15 अप्रैल 2026 तक", matching how the coaching owner actually thinks
@@ -213,6 +252,9 @@
     getCycleContaining,
     formatDDMM,
     formatHindiDate,
+    formatHindiDateShort,
+    joinHindiList,
+    hindiCollectiveWord,
     formatCycleRange
   };
 

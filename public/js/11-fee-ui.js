@@ -109,6 +109,7 @@ function renderFeeCard(data) {
         <div class="fee-actions">
             <button class="btn-main" onclick="openPaymentModal()">Record Payment</button>
             <button class="btn-light" onclick="openFeeSetupModal()">Edit Fee</button>
+            ${ data.totalDue > 0 ? '<button class="btn-light" onclick="openReminderModal()">Reminder बनाएं</button>' : "" }
         </div>
 
         <div class="fee-history">
