@@ -515,7 +515,7 @@
 
                 <!-- BATCH -->
 
-                <div class="student-profile-info-row">
+                <div class="student-profile-info-row" id="pageStudentBatchRow">
 
                     <div class="student-profile-info-label">
                         Batch
@@ -534,7 +534,7 @@
 
                 <!-- TIME -->
 
-                <div class="student-profile-info-row">
+                <div class="student-profile-info-row" id="pageStudentTimeRow">
 
                     <div class="student-profile-info-label">
                         Time
@@ -553,7 +553,7 @@
 
                 <!-- POSITION -->
 
-                <div class="student-profile-info-row">
+                <div class="student-profile-info-row" id="pageStudentPositionRow">
 
                     <div class="student-profile-info-label">
                         Position
@@ -671,6 +671,35 @@
                     Send to Inactive
                 </button>
 
+
+            </div>
+
+
+            <!-- EXPELLED BANNER (inactive-student profiles that were expelled) -->
+
+            <div
+                class="expelled-banner"
+                id="expelledBanner"
+                style="display:none;"
+            >
+                यह Student Expell किया जा चुका है — पुराना Fee/Payment data सुरक्षित है, लेकिन आगे कोई नया Fee Cycle नहीं बनेगा।
+            </div>
+
+
+            <!-- EXPELL ACTION (inactive-student profiles only) -->
+
+            <div
+                class="family-actions"
+                id="expellActionRow"
+                style="display:none;"
+            >
+
+                <button
+                    class="btn-danger"
+                    onclick="expellStudent()"
+                >
+                    Expell
+                </button>
 
             </div>
 

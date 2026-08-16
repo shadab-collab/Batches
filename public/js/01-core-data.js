@@ -131,6 +131,7 @@ let inactiveStudents = [];
 let currentBatch = null;
 let profileBatchIndex = null;
 let profileStudentIndex = null;
+let profileInactiveIndex = null;
 /* =====================================================
    CREATE STUDENT
 ===================================================== */
@@ -166,6 +167,12 @@ function normalizeStudent(student) {
   }
   if (typeof student.active !== "boolean") {
     student.active = true;
+  }
+  if (typeof student.inactiveSince !== "string") {
+    student.inactiveSince = "";
+  }
+  if (typeof student.expelled !== "boolean") {
+    student.expelled = false;
   }
   return student;
 }

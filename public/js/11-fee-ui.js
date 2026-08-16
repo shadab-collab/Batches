@@ -27,7 +27,16 @@ async function loadFeeCard(student) {
   body.innerHTML = `<div class="empty">लोड हो रहा है...</div>`;
 
   try {
-    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }`);
+    // Solo students who are inactive stop accruing fee cycles from the
+    // date they were made inactive — pass that as a cap so the backend
+    // never generates a cycle beyond it. Family fee is unaffected by one
+    // member going inactive; the admin re-sets it manually as before.
+    let url = `/api/fees/${ owner.ownerType }/${ owner.ownerKey }`;
+    if (owner.ownerType === "student" && student.active === false && student.inactiveSince) {
+      url += `?capDate=${ encodeURIComponent(student.inactiveSince) }`;
+    }
+
+    const res = await fetch(url);
     const data = await res.json();
     currentFeeData = data;
     renderFeeCard(data);

@@ -39,6 +39,7 @@ function moveDown(index) {
 function openStudentProfile(bi, si) {
   profileBatchIndex = bi;
   profileStudentIndex = si;
+  profileInactiveIndex = null;
   const batch = batches[bi];
   const student = batch.students[si];
   if (!student) {
@@ -48,6 +49,12 @@ function openStudentProfile(bi, si) {
   document.getElementById("pageStudentBatch").textContent = batch.name;
   document.getElementById("pageStudentTime").textContent = formatTime(batch.time);
   document.getElementById("pageStudentPosition").textContent = si + 1;
+  document.getElementById("pageStudentBatchRow").style.display = "";
+  document.getElementById("pageStudentTimeRow").style.display = "";
+  document.getElementById("pageStudentPositionRow").style.display = "";
+  document.getElementById("familyActions").style.display = "";
+  document.getElementById("expelledBanner").style.display = "none";
+  document.getElementById("expellActionRow").style.display = "none";
   updateFamilyProfile(student);
   loadFeeCard(student);
   document.getElementById("overlay").style.display = "none";

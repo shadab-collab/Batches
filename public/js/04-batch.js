@@ -69,6 +69,7 @@ function deleteStudent(index) {
     return;
   }
   student.active = false;
+  student.inactiveSince = FeeUtils.todayISO();
   inactiveStudents.push(student);
   batches[currentBatch].students.splice(index, 1);
   saveData();

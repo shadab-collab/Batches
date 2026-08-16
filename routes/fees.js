@@ -32,14 +32,23 @@ function amountForProfile(profile) {
 }
 
 /* Make sure a FeeCycle row exists for every cycle from the owner's first
-   cycle up to the current due cycle. Never overwrites an existing row's
-   amountDue (that stays locked once created). */
-async function ensureCycles(ownerType, ownerKey, profiles) {
+   cycle up to the current due cycle (or, if capDate is given — e.g. the
+   date a solo student went inactive — up to the last cycle that date
+   actually falls within). Never overwrites an existing row's amountDue
+   (that stays locked once created). */
+async function ensureCycles(ownerType, ownerKey, profiles, capDate) {
   const dueDateType = profiles[0].dueDateType;
   const joiningIso = profiles[0].joiningDate || profiles[0].effectiveFrom;
 
   const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
-  const lastCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
+  let lastCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
+
+  if (capDate) {
+    const capCycle = FeeUtils.getCycleContaining(dueDateType, capDate);
+    if (FeeUtils.compareISODate(capCycle.cycleKey, lastCycle.cycleKey) < 0) {
+      lastCycle = capCycle;
+    }
+  }
 
   if (FeeUtils.compareISODate(firstCycle.cycleKey, lastCycle.cycleKey) > 0) {
     return [];
@@ -78,6 +87,7 @@ async function ensureCycles(ownerType, ownerKey, profiles) {
 ===================================================== */
 router.get("/:ownerType/:ownerKey", async (req, res) => {
   const { ownerType, ownerKey } = req.params;
+  const { capDate } = req.query;
 
   try {
     const profiles = await FeeProfile.find({ ownerType, ownerKey })
@@ -88,7 +98,7 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
       return res.json({ success: true, hasProfile: false });
     }
 
-    await ensureCycles(ownerType, ownerKey, profiles);
+    await ensureCycles(ownerType, ownerKey, profiles, capDate);
 
     const cycles = await FeeCycle.find({ ownerType, ownerKey })
       .sort({ cycleKey: 1 })

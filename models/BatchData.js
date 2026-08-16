@@ -18,6 +18,14 @@ const studentSchema = new mongoose.Schema({
   active: {
     type: Boolean,
     default: true
+  },
+  inactiveSince: {
+    type: String,
+    default: ""
+  },
+  expelled: {
+    type: Boolean,
+    default: false
   }
 }, { _id: false });
 /* =====================================================
