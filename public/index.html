@@ -54,6 +54,14 @@
         Receipt खोजें
     </button>
 
+    <button
+        class="inactive-home-btn"
+        onclick="openDashboardPage()"
+        style="margin-top:10px;"
+    >
+        Dashboard
+    </button>
+
 </div>
 
 
@@ -796,6 +804,88 @@
 
 
 <!-- =====================================================
+     DASHBOARD PAGE
+===================================================== -->
+
+<div id="dashboardPage" style="display:none;">
+
+
+    <div class="student-profile-topbar">
+
+
+        <button
+            class="student-profile-back"
+            onclick="closeDashboardPage()"
+        >
+            ← Back
+        </button>
+
+
+        <div class="student-profile-heading">
+            Dashboard
+        </div>
+
+
+    </div>
+
+
+    <div class="dashboard-wrap">
+
+        <div class="dashboard-tabs">
+            <button class="dashboard-tab active" id="dashTabMonthly" onclick="switchDashboardView('monthly')">Monthly</button>
+            <button class="dashboard-tab" id="dashTabDaily" onclick="switchDashboardView('daily')">Daily</button>
+            <button class="dashboard-tab" id="dashTabWeekly" onclick="switchDashboardView('weekly')">Weekly</button>
+        </div>
+
+        <div id="dashboardMonthlyView">
+            <div class="empty">लोड हो रहा है...</div>
+        </div>
+
+        <div id="dashboardRangeView" style="display:none;">
+            <div class="field">
+                <label>From</label>
+                <input type="date" id="dashRangeFrom" onchange="loadDashboardRange()">
+            </div>
+            <div class="field">
+                <label>To</label>
+                <input type="date" id="dashRangeTo" onchange="loadDashboardRange()">
+            </div>
+            <div id="dashboardRangeResults"></div>
+        </div>
+
+        <button class="inactive-home-btn" style="margin-top:16px;" onclick="openDashboardManualEntry()">
+            पुराना Data डालें
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     DASHBOARD MANUAL ENTRY OVERLAY
+===================================================== -->
+
+<div class="overlay" id="dashboardManualOverlay">
+
+    <div class="modal">
+
+        <h2>पुराना Data डालें</h2>
+
+        <div id="dashboardManualBody">
+        </div>
+
+        <div class="actions">
+            <button class="btn-main" onclick="saveDashboardManualEntry()">Save</button>
+            <button class="btn-light" onclick="closeDashboardManualEntry()">Close</button>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
      SCRIPT
 ===================================================== -->
 
@@ -812,6 +902,8 @@
 <script src="js/11-fee-ui.js"></script>
 <script src="js/12-receipt.js"></script>
 <script src="js/13-reminder.js"></script>
+<script src="js/14-fee-status.js"></script>
+<script src="js/15-dashboard.js"></script>
 
 
 </body>

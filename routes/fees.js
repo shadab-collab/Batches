@@ -291,13 +291,17 @@ router.post("/:ownerType/:ownerKey/payment", async (req, res) => {
 ===================================================== */
 router.post("/:ownerType/:ownerKey/admission-fee-paid", async (req, res) => {
   const { ownerType, ownerKey } = req.params;
+  const paidDate = req.body.date || FeeUtils.todayISO();
 
   try {
     const first = await FeeProfile.findOne({ ownerType, ownerKey }).sort({ effectiveFrom: 1 });
     if (!first) {
       return res.status(404).json({ success: false, message: "Fee profile नहीं मिला" });
     }
-    await FeeProfile.updateMany({ ownerType, ownerKey }, { $set: { admissionFeePaid: true } });
+    await FeeProfile.updateMany(
+      { ownerType, ownerKey },
+      { $set: { admissionFeePaid: true, admissionFeePaidDate: paidDate } }
+    );
     res.json({ success: true });
   } catch (error) {
     console.error(error);
@@ -338,6 +342,109 @@ router.post("/:ownerType/:ownerKey/charity", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Charity Save नहीं हुई" });
+  }
+});
+
+
+/* =====================================================
+   BULK STATUS (for colour-coding student names by recent
+   payment history on the batch grid)
+   POST /api/fees/bulk-status
+   Body: { owners: [{ ownerType, ownerKey }, ...] }
+   Read-only — never creates FeeCycle rows, just computes
+   cycle keys on the fly from date math so it never depends
+   on a profile having been opened before.
+===================================================== */
+router.post("/bulk-status", async (req, res) => {
+  const { owners } = req.body;
+
+  if (!Array.isArray(owners) || !owners.length) {
+    return res.json({ success: true, statuses: {} });
+  }
+
+  const uniqueMap = new Map();
+  for (const o of owners) {
+    if (o && o.ownerType && o.ownerKey) {
+      uniqueMap.set(`${ o.ownerType }:${ o.ownerKey }`, o);
+    }
+  }
+  const uniqueOwners = Array.from(uniqueMap.values());
+
+  try {
+    const orConditions = uniqueOwners.map(o => ({ ownerType: o.ownerType, ownerKey: o.ownerKey }));
+
+    const profiles = await FeeProfile.find({ $or: orConditions })
+      .sort({ effectiveFrom: 1 })
+      .lean();
+    const paymentDocs = await Payment.find({ $or: orConditions }).lean();
+
+    const profilesByOwner = {};
+    for (const p of profiles) {
+      const key = `${ p.ownerType }:${ p.ownerKey }`;
+      if (!profilesByOwner[key]) {
+        profilesByOwner[key] = [];
+      }
+      profilesByOwner[key].push(p);
+    }
+
+    // both a payment and a charity entry count as "settled" for this
+    // visual indicator — charity is not the same as "didn't pay"
+    const paidByOwnerCycle = {};
+    for (const pay of paymentDocs) {
+      const key = `${ pay.ownerType }:${ pay.ownerKey }`;
+      if (!paidByOwnerCycle[key]) {
+        paidByOwnerCycle[key] = {};
+      }
+      paidByOwnerCycle[key][pay.cycleKey] = (paidByOwnerCycle[key][pay.cycleKey] || 0) + pay.amount;
+    }
+
+    const today = FeeUtils.todayISO();
+    const statuses = {};
+
+    for (const o of uniqueOwners) {
+      const key = `${ o.ownerType }:${ o.ownerKey }`;
+      const ownerProfiles = profilesByOwner[key] || [];
+      if (!ownerProfiles.length) {
+        continue;
+      }
+
+      const dueDateType = ownerProfiles[0].dueDateType;
+      const joiningIso = ownerProfiles[0].joiningDate || ownerProfiles[0].effectiveFrom;
+      const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
+      const currentCycle = FeeUtils.getCurrentCycle(dueDateType, today);
+
+      if (FeeUtils.compareISODate(firstCycle.cycleKey, currentCycle.cycleKey) > 0) {
+        continue;
+      }
+
+      const cycleKeys = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, currentCycle.cycleKey)
+        .map(c => c.cycleKey);
+      const paidMap = paidByOwnerCycle[key] || {};
+
+      const currentProfile = profileForCycle(ownerProfiles, currentCycle.cycleKey);
+      const amountDue = currentProfile ? amountForProfile(currentProfile) : 0;
+
+      let index = cycleKeys.length - 1;
+      const currentPaid = (paidMap[cycleKeys[index]] || 0) > 0;
+
+      if (currentPaid) {
+        statuses[key] = { status: "paid", amountDue };
+        continue;
+      }
+
+      let streak = 0;
+      while (index >= 0 && (paidMap[cycleKeys[index]] || 0) <= 0) {
+        streak++;
+        index--;
+      }
+      statuses[key] = { status: "unpaid", streak, amountDue };
+    }
+
+    res.json({ success: true, statuses });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Load नहीं हो सका" });
   }
 });
 

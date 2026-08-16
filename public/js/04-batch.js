@@ -125,6 +125,8 @@ function renderStudents() {
 
                     <button
                         class="manage-student-name"
+                        data-owner-type="${ student.familyCode ? "family" : "student" }"
+                        data-owner-key="${ escapeHtml(student.familyCode || student.id) }"
                         onclick="
                             openStudentProfile(
                                 ${ currentBatch },
@@ -172,4 +174,7 @@ function renderStudents() {
                 </div>
 
             `).join("");
+  if (typeof refreshFeeStatusCache === "function") {
+    refreshFeeStatusCache();
+  }
 }

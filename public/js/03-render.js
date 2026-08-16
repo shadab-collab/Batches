@@ -25,6 +25,8 @@ function render() {
 
                                 <button
                                     class="student-name"
+                                    data-owner-type="${ student.familyCode ? "family" : "student" }"
+                                    data-owner-key="${ escapeHtml(student.familyCode || student.id) }"
                                     onclick="
                                         event.stopPropagation();
                                         openStudentProfile(
@@ -75,6 +77,9 @@ function render() {
     grid.appendChild(box);
   });
   updateInactiveButton();
+  if (typeof refreshFeeStatusCache === "function") {
+    refreshFeeStatusCache();
+  }
 }
 /* =====================================================
    INACTIVE BUTTON

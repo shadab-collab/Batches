@@ -1016,3 +1016,70 @@ button{
 .reminder-text b{
     font-weight:700
 }
+
+
+/* =====================================================
+   DASHBOARD
+===================================================== */
+
+.dashboard-wrap{
+    padding:16px;
+    max-width:600px;
+    margin:auto
+}
+
+.dashboard-tabs{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px
+}
+
+.dashboard-tab{
+    flex:1;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid #d7d7d7;
+    background:#fff;
+    font-weight:700;
+    color:#555
+}
+
+.dashboard-tab.active{
+    background:#222;
+    color:#fff;
+    border-color:#222
+}
+
+.dashboard-card{
+    background:#fff;
+    border:1px solid #eee;
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:14px
+}
+
+.dashboard-card-title{
+    font-weight:700;
+    margin-bottom:10px;
+    font-size:15px
+}
+
+.dashboard-row{
+    display:flex;
+    justify-content:space-between;
+    padding:6px 0;
+    font-size:14px;
+    color:#333;
+    border-bottom:1px solid #f2f2f2
+}
+
+.dashboard-row:last-child{
+    border-bottom:0
+}
+
+.dashboard-progress{
+    text-align:center;
+    font-weight:700;
+    padding:12px;
+    color:#1e8e3e
+}
