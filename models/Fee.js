@@ -92,26 +92,8 @@ const paymentSchema = new mongoose.Schema({
 paymentSchema.index({ ownerType: 1, ownerKey: 1, cycleKey: 1 });
 
 
-/* =====================================================
-   FEE EXIT ("नाम कट गया")
-   Marks that a student/family stopped attending, from a given
-   date. Cycle generation stops at this date; all fee history
-   up to that point stays exactly as it was.
-===================================================== */
-const feeExitSchema = new mongoose.Schema({
-
-  ownerType: { type: String, enum: ["student", "family"], required: true },
-  ownerKey: { type: String, required: true },
-  exitDate: { type: String, required: true }
-
-}, { timestamps: true });
-
-feeExitSchema.index({ ownerType: 1, ownerKey: 1 }, { unique: true });
-
-
 const FeeProfile = mongoose.model("FeeProfile", feeProfileSchema);
 const FeeCycle = mongoose.model("FeeCycle", feeCycleSchema);
 const Payment = mongoose.model("Payment", paymentSchema);
-const FeeExit = mongoose.model("FeeExit", feeExitSchema);
 
-module.exports = { FeeProfile, FeeCycle, Payment, FeeExit };
+module.exports = { FeeProfile, FeeCycle, Payment };

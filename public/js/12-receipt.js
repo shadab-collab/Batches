@@ -1,3 +1,8 @@
+/* Director's signature — shown handwritten-style at the bottom of every
+   receipt. Change this line if the name needs to be different. */
+const RECEIPT_SIGNATORY_NAME = "Shadab";
+
+
 /* =====================================================
    MONTH-TEXT SUGGESTION
    "X तक Clear" = the latest cycle such that it AND every
@@ -56,10 +61,6 @@ function openReceiptModal(cycleKey) {
         <div class="field">
             <label>Address</label>
             <input id="rfAddress" type="text">
-        </div>
-        <div class="field">
-            <label>Class</label>
-            <input id="rfClass" type="text">
         </div>
         <div class="field">
             <label>Month</label>
@@ -134,8 +135,6 @@ async function generateReceipt() {
     studentName: document.getElementById("rfStudentName").value,
     fatherName: document.getElementById("rfFatherName").value,
     address: document.getElementById("rfAddress").value,
-    board: "CBSE/Bihar",
-    studentClass: document.getElementById("rfClass").value,
     monthText: document.getElementById("rfMonth").value,
     admissionFee: Number(document.getElementById("rfAdmissionFee").value) || 0,
     tuitionFee: Number(document.getElementById("rfTuitionFee").value) || 0,
@@ -174,7 +173,6 @@ async function renderAndShowReceipt(receipt) {
   document.getElementById("rStudentName").textContent = receipt.studentName;
   document.getElementById("rFatherName").textContent = receipt.fatherName;
   document.getElementById("rAddress").textContent = receipt.address;
-  document.getElementById("rClass").textContent = receipt.studentClass;
   document.getElementById("rMonth").textContent = receipt.monthText;
   document.getElementById("rAdmissionFee").textContent = receipt.admissionFee > 0 ? receipt.admissionFee : "";
   document.getElementById("rTuitionFee").textContent = receipt.tuitionFee > 0 ? receipt.tuitionFee : "";
@@ -182,6 +180,7 @@ async function renderAndShowReceipt(receipt) {
   document.getElementById("rNote").textContent = receipt.note;
   document.getElementById("rTotal").textContent = receipt.total;
   document.getElementById("rTotalWords").textContent = receipt.totalInWords;
+  document.getElementById("rSignName").textContent = RECEIPT_SIGNATORY_NAME;
 
   const modalBody = document.getElementById("receiptModalBody");
   modalBody.innerHTML = `<div class="receipt-search-result"><div class="empty">Image बन रही है...</div></div>`;
@@ -191,8 +190,8 @@ async function renderAndShowReceipt(receipt) {
 
   try {
     const canvas = await html2canvas(document.getElementById("receiptTemplate"), {
-      backgroundColor: "#fbdde3",
-      scale: 2
+      backgroundColor: "#f4c4d3",
+      scale: 2.5
     });
     canvas.toBlob(blob => {
       generatedReceiptBlob = blob;
@@ -242,42 +241,4 @@ async function shareReceiptImage(receiptNo) {
 
 function closeReceiptModal() {
   document.getElementById("receiptOverlay").style.display = "none";
-}
-
-
-/* =====================================================
-   SEARCH RECEIPT BY NUMBER
-===================================================== */
-function openReceiptSearchModal() {
-  document.getElementById("receiptModalBody").innerHTML = `
-        <div class="field">
-            <label>Receipt No.</label>
-            <input id="rsReceiptNo" type="number" placeholder="जैसे: 2101">
-        </div>
-    `;
-  document.getElementById("receiptModalActions").innerHTML = `
-        <button class="btn-main" onclick="searchReceipt()">खोजें</button>
-        <button class="btn-light" onclick="closeReceiptModal()">Close</button>
-    `;
-  document.getElementById("receiptOverlay").style.display = "flex";
-}
-
-async function searchReceipt() {
-  const receiptNo = document.getElementById("rsReceiptNo").value;
-  if (!receiptNo) {
-    alert("Receipt No. भरें");
-    return;
-  }
-
-  try {
-    const res = await fetch(`/api/receipts/${ receiptNo }`);
-    const data = await res.json();
-    if (!data.success) {
-      alert(data.message || "Receipt नहीं मिली");
-      return;
-    }
-    await renderAndShowReceipt(data.receipt);
-  } catch (error) {
-    alert("खोज नहीं हो सकी। इंटरनेट चेक करें।");
-  }
 }

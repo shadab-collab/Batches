@@ -713,17 +713,6 @@ button{
     gap:8px
 }
 
-.fee-exit-banner{
-    background:#fde8e8;
-    color:#c0392b;
-    font-weight:700;
-    text-align:center;
-    padding:10px;
-    display:flex;
-    justify-content:center;
-    gap:8px
-}
-
 .fee-member-input{
     display:flex;
     justify-content:space-between;
@@ -806,9 +795,9 @@ button{
 }
 
 .receipt-paper{
-    width:720px;
-    background:#fbdde3;
-    padding:34px 40px;
+    width:620px;
+    background:#f4c4d3;
+    padding:44px 46px;
     font-family:Arial, Helvetica, sans-serif;
     color:#1a1a1a;
     box-sizing:border-box
@@ -817,32 +806,37 @@ button{
 .receipt-paper .hw{
     font-family:'Kalam', cursive;
     font-weight:700;
-    color:#12309e;
-    font-size:22px;
+    color:#1b3f91;
+    font-size:25px;
     margin-left:6px
+}
+
+.receipt-paper .hw-black{
+    color:#1a1a1a
 }
 
 .receipt-header{
     display:flex;
     align-items:flex-start;
-    gap:16px;
+    gap:18px;
     border-bottom:2px solid #1a1a1a;
-    padding-bottom:12px;
-    margin-bottom:18px
+    padding-bottom:16px;
+    margin-bottom:24px
 }
 
 .receipt-logo{
-    width:64px;
-    height:64px;
+    width:78px;
+    height:78px;
     border-radius:50%;
-    border:3px double #444;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:700;
-    font-size:20px;
-    color:#444;
-    flex-shrink:0
+    overflow:hidden;
+    flex-shrink:0;
+    background:#fff
+}
+
+.receipt-logo img{
+    width:100%;
+    height:100%;
+    object-fit:cover
 }
 
 .receipt-header-text{
@@ -851,21 +845,21 @@ button{
 }
 
 .receipt-title{
-    font-size:14px;
+    font-size:15px;
     text-decoration:underline;
     font-weight:700;
-    margin-bottom:2px
+    margin-bottom:3px
 }
 
 .receipt-org-name{
-    font-size:30px;
+    font-size:34px;
     font-weight:800;
     letter-spacing:1px
 }
 
 .receipt-org-address,
 .receipt-org-mobile{
-    font-size:15px;
+    font-size:16px;
     color:#333
 }
 
@@ -873,8 +867,8 @@ button{
     display:flex;
     justify-content:space-between;
     gap:20px;
-    margin-bottom:14px;
-    font-size:18px
+    margin-bottom:20px;
+    font-size:20px
 }
 
 .receipt-field{
@@ -882,15 +876,15 @@ button{
 }
 
 .receipt-field-line{
-    font-size:18px;
-    margin-bottom:14px;
+    font-size:20px;
+    margin-bottom:20px;
     display:flex
 }
 
 .receipt-field-line .hw{
     flex:1;
-    border-bottom:1px dotted #999;
-    min-height:26px
+    border-bottom:1px dotted #8a8a8a;
+    min-height:30px
 }
 
 .receipt-table{
@@ -899,23 +893,23 @@ button{
     border:2px solid #1a1a1a;
     border-radius:14px;
     overflow:hidden;
-    margin-bottom:14px;
-    font-size:17px
+    margin-bottom:20px;
+    font-size:19px
 }
 
 .receipt-table th,
 .receipt-table td{
     border:1px solid #1a1a1a;
-    padding:8px 12px;
+    padding:11px 14px;
     text-align:left
 }
 
 .receipt-table .sl-col{
-    width:40px
+    width:44px
 }
 
 .receipt-table .amt-col{
-    width:110px
+    width:120px
 }
 
 .receipt-table td.hw{
@@ -924,16 +918,16 @@ button{
 
 .receipt-note-cell{
     vertical-align:top;
-    height:90px
+    height:130px
 }
 
 .receipt-note-label{
     font-weight:700;
-    margin-bottom:6px
+    margin-bottom:8px
 }
 
 .receipt-note-text{
-    font-size:20px;
+    font-size:23px;
     white-space:pre-wrap
 }
 
@@ -944,19 +938,28 @@ button{
 
 .receipt-total-label{
     font-weight:700;
-    margin-bottom:6px
+    margin-bottom:8px
 }
 
 .receipt-footer{
     display:flex;
     justify-content:space-between;
     align-items:flex-end;
-    margin-top:26px;
-    font-size:14px;
+    margin-top:32px;
+    font-size:15px;
     color:#333
 }
 
 .receipt-signature{
     text-align:center;
     font-weight:700
+}
+
+.receipt-sign-name{
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    color:#1b3f91;
+    font-size:26px;
+    display:block;
+    margin-bottom:2px
 }

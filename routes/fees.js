@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
 
-const { FeeProfile, FeeCycle, Payment, FeeExit } = require("../models/Fee");
+const { FeeProfile, FeeCycle, Payment } = require("../models/Fee");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
 
@@ -32,22 +32,14 @@ function amountForProfile(profile) {
 }
 
 /* Make sure a FeeCycle row exists for every cycle from the owner's first
-   cycle up to the current due cycle (or, if the owner has left, up to the
-   last cycle their leaving date actually falls within). Never overwrites
-   an existing row's amountDue (that stays locked once created). */
-async function ensureCycles(ownerType, ownerKey, profiles, exitDate) {
+   cycle up to the current due cycle. Never overwrites an existing row's
+   amountDue (that stays locked once created). */
+async function ensureCycles(ownerType, ownerKey, profiles) {
   const dueDateType = profiles[0].dueDateType;
   const joiningIso = profiles[0].joiningDate || profiles[0].effectiveFrom;
 
   const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
-  let lastCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
-
-  if (exitDate) {
-    const exitCycle = FeeUtils.getCycleContaining(dueDateType, exitDate);
-    if (FeeUtils.compareISODate(exitCycle.cycleKey, lastCycle.cycleKey) < 0) {
-      lastCycle = exitCycle;
-    }
-  }
+  const lastCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
 
   if (FeeUtils.compareISODate(firstCycle.cycleKey, lastCycle.cycleKey) > 0) {
     return [];
@@ -96,10 +88,7 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
       return res.json({ success: true, hasProfile: false });
     }
 
-    const exitRecord = await FeeExit.findOne({ ownerType, ownerKey }).lean();
-    const exitDate = exitRecord ? exitRecord.exitDate : null;
-
-    await ensureCycles(ownerType, ownerKey, profiles, exitDate);
+    await ensureCycles(ownerType, ownerKey, profiles);
 
     const cycles = await FeeCycle.find({ ownerType, ownerKey })
       .sort({ cycleKey: 1 })
@@ -153,8 +142,7 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
       profileHistory: profiles,
       cycles: cycleSummaries,
       payments,
-      totalDue,
-      exitInfo: exitRecord ? { exitDate: exitRecord.exitDate } : null
+      totalDue
     });
 
   } catch (error) {
@@ -340,34 +328,6 @@ router.post("/:ownerType/:ownerKey/charity", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Charity Save नहीं हुई" });
-  }
-});
-
-
-/* =====================================================
-   MARK LEFT ("नाम कट गया")  /api/fees/:ownerType/:ownerKey/mark-left
-   Body: { exitDate }
-   Stops future fee cycles from being generated. All fee
-   history up to the exit date stays exactly as it was.
-===================================================== */
-router.post("/:ownerType/:ownerKey/mark-left", async (req, res) => {
-  const { ownerType, ownerKey } = req.params;
-  const { exitDate } = req.body;
-
-  if (!exitDate) {
-    return res.status(400).json({ success: false, message: "exitDate जरूरी है" });
-  }
-
-  try {
-    await FeeExit.findOneAndUpdate(
-      { ownerType, ownerKey },
-      { $set: { ownerType, ownerKey, exitDate } },
-      { upsert: true }
-    );
-    res.json({ success: true });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Save नहीं हुआ" });
   }
 });
 

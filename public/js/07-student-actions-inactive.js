@@ -151,54 +151,8 @@ function renderInactiveStudents() {
 
                             </div>
 
-
-                            <button
-                                class="small-btn btn-green"
-                                onclick="
-                                    reactivateStudent(
-                                        ${ index }
-                                    )
-                                "
-                            >
-                                Reactive
-                            </button>
-
                         </div>
 
                     `;
   }).join("");
-}
-/* =====================================================
-   REACTIVE STUDENT
-===================================================== */
-function reactivateStudent(index) {
-  const student = inactiveStudents[index];
-  if (!student) {
-    return;
-  }
-  const batchList = batches.map((batch, i) => `${ i + 1 }. ${ batch.name } — ${ formatTime(batch.time) }`).join("\n");
-  const target = prompt(`Student: ${ student.name }\n\n` + `किस Batch में वापस भेजना है?\n\n` + batchList + `\n\nBatch number लिखें (1-10):`);
-  if (target === null) {
-    return;
-  }
-  const targetIndex = Number(target) - 1;
-  if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= batches.length) {
-    alert("सही Batch number चुनें\u0964");
-    return;
-  }
-  /*
-       Student को Active करें
-    */
-  student.active = true;
-  /*
-       चुने हुए Batch में डालें
-    */
-  batches[targetIndex].students.push(student);
-  /*
-       Inactive से हटाएँ
-    */
-  inactiveStudents.splice(index, 1);
-  saveData();
-  renderInactiveStudents();
-  render();
 }

@@ -97,13 +97,7 @@ function renderFeeCard(data) {
         `
     : "";
 
-  const exitBanner = data.exitInfo
-    ? `<div class="fee-exit-banner">नाम कट गया <span>${ FeeUtils.formatDDMM(data.exitInfo.exitDate) }</span></div>`
-    : "";
-
   body.innerHTML = `
-        ${ exitBanner }
-
         <div class="fee-summary">
             <div><strong>Type:</strong> ${ modeLabel }</div>
             <div><strong>Amount:</strong> ${ amountLine }</div>
@@ -115,7 +109,6 @@ function renderFeeCard(data) {
         <div class="fee-actions">
             <button class="btn-main" onclick="openPaymentModal()">Record Payment</button>
             <button class="btn-light" onclick="openFeeSetupModal()">Edit Fee</button>
-            ${ !data.exitInfo ? '<button class="btn-danger" onclick="openMarkLeftModal()">नाम कट गया</button>' : "" }
         </div>
 
         <div class="fee-history">
@@ -202,51 +195,6 @@ async function saveCharity() {
     await loadFeeCard(currentFeeStudent);
   } catch (error) {
     alert("Charity Save नहीं हो सकी। इंटरनेट चेक करें।");
-  }
-}
-
-
-/* =====================================================
-   MARK LEFT MODAL ("नाम कट गया")
-===================================================== */
-function openMarkLeftModal() {
-  const modal = document.getElementById("feeOverlay");
-  document.getElementById("feeModalTitle").textContent = "नाम कट गया";
-
-  document.getElementById("feeModalBody").innerHTML = `
-        <div class="field">
-            <label>किस तारीख को नाम कटा</label>
-            <input id="feeExitDateInput" type="date" value="${ new Date().toISOString().slice(0, 10) }">
-        </div>
-        <div class="empty">इसके बाद इस Student/Family की आगे की Fee Cycle नहीं बनेगी। पुरानी History सुरक्षित रहेगी।</div>
-    `;
-
-  modal.style.display = "flex";
-}
-
-async function saveMarkLeft() {
-  const owner = currentFeeOwner;
-  const exitDate = document.getElementById("feeExitDateInput").value;
-  if (!exitDate) {
-    alert("तारीख भरें");
-    return;
-  }
-
-  try {
-    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/mark-left`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ exitDate })
-    });
-    const data = await res.json();
-    if (!data.success) {
-      alert(data.message || "Save नहीं हुआ");
-      return;
-    }
-    closeFeeModal();
-    await loadFeeCard(currentFeeStudent);
-  } catch (error) {
-    alert("Save नहीं हो सका। इंटरनेट चेक करें।");
   }
 }
 
@@ -524,8 +472,6 @@ function saveFeeModal() {
     savePayment();
   } else if (title === "Charity दर्ज करें") {
     saveCharity();
-  } else if (title === "नाम कट गया") {
-    saveMarkLeft();
   } else {
     saveFeeProfile();
   }

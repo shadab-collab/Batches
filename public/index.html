@@ -46,14 +46,6 @@
         Inactive Students
     </button>
 
-    <button
-        class="inactive-home-btn"
-        onclick="openReceiptSearchModal()"
-        style="margin-top:10px;"
-    >
-        Receipt खोजें
-    </button>
-
 </div>
 
 
@@ -350,7 +342,7 @@
     <div id="receiptTemplate" class="receipt-paper">
 
         <div class="receipt-header">
-            <div class="receipt-logo">SC</div>
+            <div class="receipt-logo"><img src="images/logo.png" alt="logo"></div>
             <div class="receipt-header-text">
                 <div class="receipt-title">Receipt</div>
                 <div class="receipt-org-name">SHADAB COACHING CENTER</div>
@@ -360,18 +352,13 @@
         </div>
 
         <div class="receipt-row">
-            <div class="receipt-field">Receipt No. : <span class="hw" id="rNo"></span></div>
+            <div class="receipt-field">Receipt No. : <span class="hw hw-black" id="rNo"></span></div>
             <div class="receipt-field">Date : <span class="hw" id="rDate"></span></div>
         </div>
 
         <div class="receipt-field-line">Student's Name :<span class="hw" id="rStudentName"></span></div>
         <div class="receipt-field-line">Father's Name :<span class="hw" id="rFatherName"></span></div>
         <div class="receipt-field-line">Address :<span class="hw" id="rAddress"></span></div>
-
-        <div class="receipt-row">
-            <div class="receipt-field">Board :- CBSE/Bihar</div>
-            <div class="receipt-field">Class <span class="hw" id="rClass"></span></div>
-        </div>
 
         <div class="receipt-field-line">Month :<span class="hw" id="rMonth"></span></div>
 
@@ -402,7 +389,7 @@
 
         <div class="receipt-footer">
             <div class="receipt-footer-note">Note : All Dues must be paid on<br>10th of each month.</div>
-            <div class="receipt-signature">Signature<br>Director</div>
+            <div class="receipt-signature"><span class="receipt-sign-name" id="rSignName"></span>Signature<br>Director</div>
         </div>
 
     </div>
