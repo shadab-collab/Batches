@@ -113,10 +113,39 @@ function getFamilyMembers(code) {
     */
   return members;
 }
+
+/* =====================================================
+   FAMILY CAP DATE
+   If every member of a family (active + inactive combined)
+   has gone inactive, returns the LATEST inactiveSince date
+   among them — the fee cycle should stop at that point.
+   Returns null if any member is still active (fee keeps
+   running normally) or if the info isn't available.
+===================================================== */
+function getFamilyCapDate(code) {
+  if (!code) {
+    return null;
+  }
+  const activeMembers = getFamilyMembers(code);
+  if (activeMembers.length) {
+    return null;
+  }
+  const inactiveMembers = inactiveStudents.filter(s => s.familyCode === code);
+  if (!inactiveMembers.length) {
+    return null;
+  }
+  let latest = null;
+  inactiveMembers.forEach(s => {
+    if (s.inactiveSince && (!latest || s.inactiveSince > latest)) {
+      latest = s.inactiveSince;
+    }
+  });
+  return latest;
+}
 /* =====================================================
    ADD TO FAMILY
 ===================================================== */
-function addStudentToFamily() {
+async function addStudentToFamily() {
   if (profileBatchIndex === null || profileStudentIndex === null) {
     return;
   }
@@ -124,15 +153,43 @@ function addStudentToFamily() {
   if (!student) {
     return;
   }
-  const code = prompt("Family Code डालें:\n\nउदाहरण: F001");
-  if (code === null) {
-    return;
+
+  const makeNew = confirm("नई Family बनानी है?\n\nOK = नई Family (अपने आप नया Code मिलेगा)\nCancel = किसी मौजूदा Family का Code खुद डालें");
+
+  let familyCode;
+
+  if (makeNew) {
+    try {
+      const res = await fetch("/api/family-code/next", { method: "POST" });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.message || "Family Code नहीं बन सका");
+        return;
+      }
+      familyCode = data.code;
+    } catch (error) {
+      alert("Family Code नहीं बन सका। इंटरनेट चेक करें।");
+      return;
+    }
+  } else {
+    const code = prompt("मौजूदा Family Code डालें:\n\nउदाहरण: F001");
+    if (code === null) {
+      return;
+    }
+    familyCode = code.trim().toUpperCase();
+    if (!familyCode) {
+      alert("Family Code खाली नहीं हो सकता\u0964");
+      return;
+    }
+    const isKnownActiveCode = batches.some(b => b.students.some(s => s.familyCode === familyCode));
+    if (!isKnownActiveCode) {
+      const proceed = confirm(`"${ familyCode }" अभी किसी active Student से जुड़ा नहीं है — शायद पुराना/गलत Code है।\n\nफिर भी इस्तेमाल करना है?`);
+      if (!proceed) {
+        return;
+      }
+    }
   }
-  const familyCode = code.trim().toUpperCase();
-  if (!familyCode) {
-    alert("Family Code खाली नहीं हो सकता\u0964");
-    return;
-  }
+
   student.familyCode = familyCode;
   saveData();
   updateFamilyProfile(student);

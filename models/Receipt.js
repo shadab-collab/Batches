@@ -1,33 +1,11 @@
 const mongoose = require("mongoose");
+const { getNextCounterValue } = require("./Counter");
 
-/* =====================================================
-   COUNTER
-   Generic auto-increment helper. The receipt counter is
-   seeded at 2100 (the coaching center's own numbering
-   before this system existed) so the first receipt this
-   system creates is 2101.
-===================================================== */
-const counterSchema = new mongoose.Schema({
-  name: { type: String, unique: true, required: true },
-  value: { type: Number, required: true }
-});
-
-const Counter = mongoose.model("Counter", counterSchema);
-
+/* Receipt numbers are seeded at 2100 (the coaching center's own numbering
+   before this system existed) so the first receipt this system creates
+   is 2101. */
 async function getNextReceiptNo() {
-  // make sure the counter exists, seeded at 2100 — a no-op if it already exists
-  await Counter.findOneAndUpdate(
-    { name: "receipt" },
-    { $setOnInsert: { name: "receipt", value: 2100 } },
-    { upsert: true }
-  );
-  // always increments by exactly 1, atomically, and returns the new value
-  const updated = await Counter.findOneAndUpdate(
-    { name: "receipt" },
-    { $inc: { value: 1 } },
-    { new: true }
-  );
-  return updated.value;
+  return getNextCounterValue("receipt", 2100);
 }
 
 

@@ -28,16 +28,26 @@ async function loadFeeCard(student) {
 
   try {
     // Solo students who are inactive stop accruing fee cycles from the
-    // date they were made inactive — pass that as a cap so the backend
-    // never generates a cycle beyond it. Family fee is unaffected by one
-    // member going inactive; the admin re-sets it manually as before.
+    // date they were made inactive. Family fee is unaffected while ANY
+    // member is still active (admin re-sets it manually as before) — it
+    // only stops once every member of the family has gone inactive, at
+    // the latest of their inactive dates.
     let url = `/api/fees/${ owner.ownerType }/${ owner.ownerKey }`;
+    let capDate = null;
+
     if (owner.ownerType === "student" && student.active === false && student.inactiveSince) {
-      url += `?capDate=${ encodeURIComponent(student.inactiveSince) }`;
+      capDate = student.inactiveSince;
+    } else if (owner.ownerType === "family") {
+      capDate = getFamilyCapDate(owner.ownerKey);
+    }
+
+    if (capDate) {
+      url += `?capDate=${ encodeURIComponent(capDate) }`;
     }
 
     const res = await fetch(url);
     const data = await res.json();
+    data.familyFullyInactive = owner.ownerType === "family" && !!capDate;
     currentFeeData = data;
     renderFeeCard(data);
   } catch (error) {
@@ -71,8 +81,15 @@ function renderFeeCard(data) {
     : profile.feeMode === "total" ? "Family (Total Fee)"
     : "Solo";
 
+  const familyNameById = {};
+  if (profile.feeMode === "individual") {
+    getFamilyMembers(currentFeeOwner.ownerKey).forEach(m => {
+      familyNameById[m.student.id] = m.student.name;
+    });
+  }
+
   const amountLine = profile.feeMode === "individual"
-    ? profile.memberFees.map(m => `${ escapeHtml(m.studentId) }: ₹${ m.amount }`).join(", ")
+    ? profile.memberFees.map(m => `${ escapeHtml(familyNameById[m.studentId] || "पुराना Member") }: ₹${ m.amount }`).join(", ")
     : `₹${ profile.amount }`;
 
   const statusClass = c => c.status.toLowerCase().replace(/[\s/]+/g, "-");
@@ -107,6 +124,8 @@ function renderFeeCard(data) {
     : "";
 
   body.innerHTML = `
+        ${ data.familyFullyInactive ? '<div class="expelled-banner">यह Family पूरी तरह Inactive है — आगे नई Fee Cycle नहीं बनेगी</div>' : "" }
+
         <div class="fee-summary">
             <div><strong>Type:</strong> ${ modeLabel }</div>
             <div><strong>Amount:</strong> ${ amountLine }</div>

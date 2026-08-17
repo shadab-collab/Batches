@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const {BatchData} = require("../models/BatchData");
-const {isMongoReady} = require("../config/db");
+const { BatchData } = require("../models/BatchData");
+const { isMongoReady } = require("../config/db");
+const { getNextCounterValue } = require("../models/Counter");
 /* =====================================================
    HEALTH
 ===================================================== */
@@ -53,7 +54,7 @@ router.put("/batches", async (req, res) => {
     });
   }
   try {
-    const {batches, inactiveStudents} = req.body;
+    const { batches, inactiveStudents } = req.body;
     if (!Array.isArray(batches)) {
       return res.status(400).json({
         success: false,
@@ -84,4 +85,31 @@ router.put("/batches", async (req, res) => {
     });
   }
 });
+
+/* =====================================================
+   NEXT FAMILY CODE
+   Auto-incrementing, never reused (F001, F002, ...) — so a
+   brand-new family can never accidentally collide with an
+   old family code whose members have all left.
+===================================================== */
+router.post("/family-code/next", async (req, res) => {
+  if (!isMongoReady()) {
+    return res.status(503).json({
+      success: false,
+      message: "MongoDB is not connected"
+    });
+  }
+  try {
+    const n = await getNextCounterValue("familyCode", 0);
+    const code = "F" + String(n).padStart(3, "0");
+    res.json({ success: true, code });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Could not generate Family Code"
+    });
+  }
+});
+
 module.exports = router;
