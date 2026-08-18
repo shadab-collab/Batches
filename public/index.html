@@ -62,6 +62,14 @@
         Dashboard
     </button>
 
+    <button
+        class="inactive-home-btn"
+        onclick="openCleanupPage()"
+        style="margin-top:10px;"
+    >
+        Data Cleanup
+    </button>
+
 </div>
 
 
@@ -518,6 +526,20 @@
             </div>
 
 
+            <div class="student-identity-row">
+
+                <span id="pageStudentIdentity"></span>
+
+                <button
+                    class="small-btn btn-light"
+                    onclick="editStudentIdentity()"
+                >
+                    पहचान जोड़ें/बदलें
+                </button>
+
+            </div>
+
+
             <div class="student-profile-info">
 
 
@@ -838,7 +860,13 @@
         </div>
 
         <div id="dashboardMonthlyView">
-            <div class="empty">लोड हो रहा है...</div>
+            <div class="field">
+                <label>महीना चुनें</label>
+                <input type="month" id="dashMonthPicker" onchange="loadDashboardMonthly()">
+            </div>
+            <div id="dashboardMonthlyCards">
+                <div class="empty">लोड हो रहा है...</div>
+            </div>
         </div>
 
         <div id="dashboardRangeView" style="display:none;">
@@ -886,6 +914,44 @@
 
 
 <!-- =====================================================
+     DATA CLEANUP PAGE
+===================================================== -->
+
+<div id="cleanupPage" style="display:none;">
+
+
+    <div class="student-profile-topbar">
+
+        <button
+            class="student-profile-back"
+            onclick="closeCleanupPage()"
+        >
+            ← Back
+        </button>
+
+        <div class="student-profile-heading">
+            Data Cleanup
+        </div>
+
+    </div>
+
+
+    <div class="dashboard-wrap">
+
+        <div class="empty">
+            यहां वो सारा Fee/Payment/Receipt data दिखेगा जिसका कोई Student अब किसी भी list में मौजूद नहीं (जैसे गलती से delete हुआ test student)। हटाना हमेशा के लिए है — सोच-समझकर।
+        </div>
+
+        <div id="cleanupResults" style="margin-top:16px;">
+            <div class="empty">लोड हो रहा है...</div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
      SCRIPT
 ===================================================== -->
 
@@ -904,6 +970,7 @@
 <script src="js/13-reminder.js"></script>
 <script src="js/14-fee-status.js"></script>
 <script src="js/15-dashboard.js"></script>
+<script src="js/16-cleanup.js"></script>
 
 
 </body>

@@ -35,6 +35,32 @@ function collectFeeOwnersFromBatches() {
   return owners;
 }
 
+/* =====================================================
+   COLLECT OWNER KEYS FROM *ALL* KNOWN STUDENTS
+   (active batches + inactive list — expelled students are
+   excluded since they're already gone from every list, so
+   any data left behind for them is genuinely orphaned)
+===================================================== */
+function collectAllKnownFeeOwners() {
+  const seen = new Set();
+  const owners = [];
+
+  function addStudent(student) {
+    const ownerType = student.familyCode ? "family" : "student";
+    const ownerKey = student.familyCode || student.id;
+    const dedupeKey = `${ ownerType }:${ ownerKey }`;
+    if (!seen.has(dedupeKey)) {
+      seen.add(dedupeKey);
+      owners.push({ ownerType, ownerKey });
+    }
+  }
+
+  batches.forEach(batch => batch.students.forEach(addStudent));
+  inactiveStudents.filter(s => !s.expelled).forEach(addStudent);
+
+  return owners;
+}
+
 
 /* =====================================================
    REFRESH + APPLY

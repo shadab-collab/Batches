@@ -192,6 +192,7 @@ function openInactiveStudentProfile(index) {
   profileInactiveIndex = index;
 
   document.getElementById("pageStudentName").textContent = student.name;
+  document.getElementById("pageStudentIdentity").textContent = student.identity || "";
   document.getElementById("pageStudentBatchRow").style.display = "none";
   document.getElementById("pageStudentTimeRow").style.display = "none";
   document.getElementById("pageStudentPositionRow").style.display = "none";

@@ -375,6 +375,29 @@ button{
     font-size:12px
 }
 
+.student-identity-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:10px 16px;
+    background:#e9eef5;
+    border-top:1px solid #dde3ec
+}
+
+.student-identity-row span{
+    font-size:13px;
+    color:#555;
+    font-style:italic
+}
+
+.student-identity{
+    font-size:12px;
+    color:#888;
+    font-weight:400;
+    margin-left:4px
+}
+
 .student-profile-info{
     padding:5px 17px 12px
 }

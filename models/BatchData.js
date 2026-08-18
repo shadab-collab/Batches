@@ -26,6 +26,10 @@ const studentSchema = new mongoose.Schema({
   expelled: {
     type: Boolean,
     default: false
+  },
+  identity: {
+    type: String,
+    default: ""
   }
 }, { _id: false });
 /* =====================================================

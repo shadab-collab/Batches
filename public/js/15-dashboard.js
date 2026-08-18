@@ -6,9 +6,12 @@ function currentYearMonth() {
   return `${ d.getFullYear() }-${ String(d.getMonth() + 1).padStart(2, "0") }`;
 }
 
-function previousYearMonth() {
-  const d = new Date();
-  d.setDate(1);
+/* One month before whichever yearMonth is passed in (not necessarily
+   the real calendar's previous month — used to build the comparison
+   card for whatever month the picker is currently showing). */
+function monthBefore(yearMonth) {
+  const [y, m] = yearMonth.split("-").map(Number);
+  const d = new Date(y, m - 1, 1);
   d.setMonth(d.getMonth() - 1);
   return `${ d.getFullYear() }-${ String(d.getMonth() + 1).padStart(2, "0") }`;
 }
@@ -35,6 +38,11 @@ function openDashboardPage() {
   }
   document.getElementById("dashboardPage").style.display = "block";
   window.scrollTo(0, 0);
+
+  const picker = document.getElementById("dashMonthPicker");
+  if (!picker.value) {
+    picker.value = currentYearMonth();
+  }
 
   switchDashboardView("monthly");
   refreshDashboardSnapshotAndLoad();
@@ -120,19 +128,23 @@ async function refreshDashboardSnapshotAndLoad() {
 }
 
 async function loadDashboardMonthly() {
-  const view = document.getElementById("dashboardMonthlyView");
-  view.innerHTML = `<div class="empty">लोड हो रहा है...</div>`;
+  const cardsBox = document.getElementById("dashboardMonthlyCards");
+  cardsBox.innerHTML = `<div class="empty">लोड हो रहा है...</div>`;
+
+  const selectedMonth = document.getElementById("dashMonthPicker").value || currentYearMonth();
+  const priorMonth = monthBefore(selectedMonth);
+  const isCurrentMonth = selectedMonth === currentYearMonth();
 
   try {
     const [curRes, prevRes] = await Promise.all([
-      fetch(`/api/dashboard/summary?month=${ currentYearMonth() }`),
-      fetch(`/api/dashboard/summary?month=${ previousYearMonth() }`)
+      fetch(`/api/dashboard/summary?month=${ selectedMonth }`),
+      fetch(`/api/dashboard/summary?month=${ priorMonth }`)
     ]);
     const cur = await curRes.json();
     const prev = await prevRes.json();
 
     if (!cur.success) {
-      view.innerHTML = `<div class="empty">${ escapeHtml(cur.message || "Error") }</div>`;
+      cardsBox.innerHTML = `<div class="empty">${ escapeHtml(cur.message || "Error") }</div>`;
       return;
     }
 
@@ -143,26 +155,28 @@ async function loadDashboardMonthly() {
         ? `+₹${ collectionDiff } पिछले महीने से ज़्यादा`
         : `₹${ Math.abs(collectionDiff) } पिछले महीने से कम`);
 
-    view.innerHTML = `
+    cardsBox.innerHTML = `
             <div class="dashboard-card">
-                <div class="dashboard-card-title">${ monthLabel(cur.yearMonth) } (इस महीने)</div>
+                <div class="dashboard-card-title">${ monthLabel(cur.yearMonth) }${ isCurrentMonth ? " (इस महीने)" : "" }</div>
                 <div class="dashboard-row"><span>Active Students</span><strong>${ cur.activeStudentCount ?? "-" }</strong></div>
                 <div class="dashboard-row"><span>Total Monthly Fee (सभी Active)</span><strong>₹${ cur.totalMonthlyFeeCommitted ?? "-" }</strong></div>
-                <div class="dashboard-row"><span>Collection अब तक (Tuition)</span><strong>₹${ cur.tuitionCollection }</strong></div>
-                <div class="dashboard-row"><span>Collection अब तक (Admission)</span><strong>₹${ cur.admissionCollection }</strong></div>
+                <div class="dashboard-row"><span>Collection ${ isCurrentMonth ? "अब तक" : "" } (Tuition)</span><strong>₹${ cur.tuitionCollection }</strong></div>
+                <div class="dashboard-row"><span>Collection ${ isCurrentMonth ? "अब तक" : "" } (Admission)</span><strong>₹${ cur.admissionCollection }</strong></div>
                 <div class="dashboard-row"><span>कुल Collection</span><strong>₹${ cur.collection }</strong></div>
+                ${ cur.source === "manual" ? '<div class="empty">(हाथ से डाला गया Data)</div>' : "" }
             </div>
 
             <div class="dashboard-card">
                 <div class="dashboard-card-title">${ monthLabel(prev.yearMonth) } (पिछला महीना)</div>
                 <div class="dashboard-row"><span>Active Students</span><strong>${ prev.activeStudentCount ?? "-" }</strong></div>
                 <div class="dashboard-row"><span>कुल Collection</span><strong>₹${ prev.collection || 0 }</strong></div>
+                ${ prev.source === "manual" ? '<div class="empty">(हाथ से डाला गया Data)</div>' : "" }
             </div>
 
             <div class="dashboard-progress">${ diffText }</div>
         `;
   } catch (error) {
-    view.innerHTML = `<div class="empty">Load नहीं हो सका। इंटरनेट चेक करें।</div>`;
+    cardsBox.innerHTML = `<div class="empty">Load नहीं हो सका। इंटरनेट चेक करें।</div>`;
   }
 }
 

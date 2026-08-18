@@ -449,4 +449,94 @@ router.post("/bulk-status", async (req, res) => {
 });
 
 
+/* =====================================================
+   FIND ORPHANED FEE DATA
+   POST /api/fees/orphaned
+   Body: { validOwners: [{ ownerType, ownerKey }, ...] }
+   (the app sends every student/family it currently knows
+   about — anything in the Fee data NOT in that list has no
+   student behind it anymore, e.g. a deleted test student.)
+===================================================== */
+router.post("/orphaned", async (req, res) => {
+  const { validOwners } = req.body;
+  const validSet = new Set((validOwners || []).map(o => `${ o.ownerType }:${ o.ownerKey }`));
+
+  try {
+    const profiles = await FeeProfile.find({}).lean();
+    const seen = new Map();
+    for (const p of profiles) {
+      const key = `${ p.ownerType }:${ p.ownerKey }`;
+      if (!validSet.has(key) && !seen.has(key)) {
+        seen.set(key, { ownerType: p.ownerType, ownerKey: p.ownerKey });
+      }
+    }
+
+    const { Receipt } = require("../models/Receipt");
+    const results = [];
+
+    for (const { ownerType, ownerKey } of seen.values()) {
+      const payments = await Payment.find({ ownerType, ownerKey }).lean();
+      const totalPaid = payments.filter(p => p.type !== "charity").reduce((s, p) => s + p.amount, 0);
+      const totalCharity = payments.filter(p => p.type === "charity").reduce((s, p) => s + p.amount, 0);
+      const cycleCount = await FeeCycle.countDocuments({ ownerType, ownerKey });
+      const lastPayment = payments.sort((a, b) => (a.paymentDate < b.paymentDate ? 1 : -1))[0];
+      const receipt = await Receipt.findOne({ ownerType, ownerKey }).lean();
+      const receiptCount = await Receipt.countDocuments({ ownerType, ownerKey });
+
+      results.push({
+        ownerType,
+        ownerKey,
+        possibleName: receipt ? receipt.studentName : "",
+        totalPaid,
+        totalCharity,
+        cycleCount,
+        receiptCount,
+        lastActivity: lastPayment ? lastPayment.paymentDate : null
+      });
+    }
+
+    res.json({ success: true, orphaned: results });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Load नहीं हो सका" });
+  }
+});
+
+
+/* =====================================================
+   PERMANENTLY DELETE AN OWNER'S FEE DATA
+   POST /api/fees/purge-owner
+   Body: { ownerType, ownerKey, purgeReceipts }
+   Irreversible. Only meant for orphaned owners surfaced by
+   /orphaned above (fake/test/mistakenly-deleted students).
+===================================================== */
+router.post("/purge-owner", async (req, res) => {
+  const { ownerType, ownerKey, purgeReceipts } = req.body;
+
+  if (!ownerType || !ownerKey) {
+    return res.status(400).json({ success: false, message: "ownerType और ownerKey जरूरी हैं" });
+  }
+
+  try {
+    await FeeProfile.deleteMany({ ownerType, ownerKey });
+    await FeeCycle.deleteMany({ ownerType, ownerKey });
+    await Payment.deleteMany({ ownerType, ownerKey });
+
+    let receiptsDeleted = 0;
+    if (purgeReceipts) {
+      const { Receipt } = require("../models/Receipt");
+      const result = await Receipt.deleteMany({ ownerType, ownerKey });
+      receiptsDeleted = result.deletedCount || 0;
+    }
+
+    res.json({ success: true, receiptsDeleted });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Delete नहीं हो सका" });
+  }
+});
+
+
 module.exports = router;

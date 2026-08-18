@@ -46,6 +46,7 @@ function openStudentProfile(bi, si) {
     return;
   }
   document.getElementById("pageStudentName").textContent = student.name;
+  document.getElementById("pageStudentIdentity").textContent = student.identity || "";
   document.getElementById("pageStudentBatch").textContent = batch.name;
   document.getElementById("pageStudentTime").textContent = formatTime(batch.time);
   document.getElementById("pageStudentPosition").textContent = si + 1;
@@ -68,4 +69,38 @@ function openStudentProfile(bi, si) {
   document.getElementById("inactiveStudentsPage").style.display = "none";
   document.getElementById("studentProfilePage").style.display = "block";
   window.scrollTo(0, 0);
+}
+
+/* =====================================================
+   GET CURRENT PROFILE STUDENT
+   Works whether the currently open profile is an active
+   batch student or an inactive-list student.
+===================================================== */
+function getCurrentProfileStudent() {
+  if (profileInactiveIndex !== null) {
+    return inactiveStudents[profileInactiveIndex];
+  }
+  if (profileBatchIndex !== null && profileStudentIndex !== null) {
+    return batches[profileBatchIndex].students[profileStudentIndex];
+  }
+  return null;
+}
+
+/* =====================================================
+   EDIT STUDENT IDENTITY ("पहचान")
+   A short freeform tag to tell same-named students apart —
+   e.g. "लंबा", "छोटा भाई", "गली नंबर 2".
+===================================================== */
+function editStudentIdentity() {
+  const student = getCurrentProfileStudent();
+  if (!student) {
+    return;
+  }
+  const value = prompt("पहचान डालें (जैसे: लंबा, छोटा भाई, गली नंबर 2):", student.identity || "");
+  if (value === null) {
+    return;
+  }
+  student.identity = value.trim();
+  saveData();
+  document.getElementById("pageStudentIdentity").textContent = student.identity;
 }

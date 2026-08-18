@@ -174,6 +174,9 @@ function normalizeStudent(student) {
   if (typeof student.expelled !== "boolean") {
     student.expelled = false;
   }
+  if (typeof student.identity !== "string") {
+    student.identity = "";
+  }
   return student;
 }
 /* =====================================================

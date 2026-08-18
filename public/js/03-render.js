@@ -36,6 +36,7 @@ function render() {
                                     "
                                 >
                                     ${ escapeHtml(student.name) }
+                                    ${ student.identity ? `<span class="student-identity">(${ escapeHtml(student.identity) })</span>` : "" }
                                 </button>
 
                             </div>
