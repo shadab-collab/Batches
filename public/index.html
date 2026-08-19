@@ -481,6 +481,62 @@
 
 
 <!-- =====================================================
+     ASSESSMENT OVERLAY (edit form + generated image)
+===================================================== -->
+
+<div
+    class="overlay"
+    id="assessmentOverlay"
+>
+
+    <div class="modal receipt-modal">
+
+        <h2>Formative Assessment</h2>
+
+        <div id="assessmentModalBody">
+        </div>
+
+        <div class="actions" id="assessmentModalActions">
+            <button class="btn-main" onclick="generateAssessmentCard()">Card Generate करें</button>
+            <button class="btn-light" onclick="closeAssessmentModal()">Close</button>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     ASSESSMENT TEMPLATE (rendered off-screen, captured as
+     an image via the same html2canvas flow as Receipt/Reminder)
+===================================================== -->
+
+<div id="assessmentTemplateWrap" class="reminder-template-wrap">
+    <div id="assessmentTemplate" class="assessment-paper">
+
+        <div class="assessment-header">📋 <b>FORMATIVE ASSESSMENT</b></div>
+
+        <div class="assessment-meta">
+            <div>👤 <b>विद्यार्थी:</b> <span id="asStudentName"></span></div>
+            <div>📚 <b>कक्षा:</b> <span id="asClass"></span></div>
+            <div>📅 <b>मूल्यांकन अवधि:</b> <span id="asPeriod"></span></div>
+        </div>
+
+        <div class="assessment-section-title improvement">🟢 <b>सुधार</b></div>
+        <div id="asImprovementList" class="assessment-list"></div>
+
+        <div class="assessment-section-title gap">🔴 <b>कमी</b></div>
+        <div id="asGapList" class="assessment-list"></div>
+
+        <div class="assessment-comment">👨‍🏫 <b>शिक्षक की टिप्पणी:</b><br><span id="asComment"></span></div>
+
+        <div class="assessment-footer"><b>Shadab Coaching Center</b></div>
+
+    </div>
+</div>
+
+
+<!-- =====================================================
      STUDENT PROFILE PAGE
 ===================================================== -->
 
@@ -761,6 +817,32 @@
 
 
         <!-- =================================================
+             ASSESSMENT SECTION
+        ================================================== -->
+
+        <div
+            class="student-profile-section"
+            id="assessmentSection"
+        >
+
+            <div class="student-profile-section-title">
+                Formative Assessment
+            </div>
+
+            <div class="student-profile-section-body">
+                <button
+                    class="btn-main"
+                    onclick="openAssessmentModal()"
+                    style="width:100%;"
+                >
+                    Formative Assessment Card
+                </button>
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
              OTHER PROFILE DETAILS
         ================================================== -->
 
@@ -977,6 +1059,7 @@
 <script src="js/14-fee-status.js"></script>
 <script src="js/15-dashboard.js"></script>
 <script src="js/16-cleanup.js"></script>
+<script src="js/17-assessment.js"></script>
 
 
 </body>

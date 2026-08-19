@@ -1131,3 +1131,112 @@ button{
     border-bottom:1px solid #f2f2f2;
     margin-bottom:4px
 }
+
+
+/* =====================================================
+   ASSESSMENT EDIT FORM
+===================================================== */
+
+.assessment-entry-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid #f2f2f2;
+    font-size:14px
+}
+
+.assessment-add-row{
+    display:flex;
+    gap:8px;
+    margin-top:8px
+}
+
+.assessment-add-row input{
+    flex:1;
+    padding:8px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    font-size:14px
+}
+
+
+/* =====================================================
+   ASSESSMENT CARD TEMPLATE (WhatsApp image export)
+===================================================== */
+
+.assessment-paper{
+    width:760px;
+    background:#ffffff;
+    padding:44px 46px;
+    font-family:Arial, Helvetica, sans-serif;
+    color:#1a1a1a;
+    box-sizing:border-box
+}
+
+.assessment-header{
+    text-align:center;
+    font-size:26px;
+    font-weight:800;
+    border:2px solid #222;
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:24px;
+    letter-spacing:0.5px
+}
+
+.assessment-meta{
+    font-size:19px;
+    line-height:1.9;
+    margin-bottom:26px
+}
+
+.assessment-section-title{
+    text-align:center;
+    font-size:21px;
+    font-weight:800;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:14px
+}
+
+.assessment-section-title.improvement{
+    background:#e6f7ec;
+    color:#1e8e3e
+}
+
+.assessment-section-title.gap{
+    background:#fde8e8;
+    color:#c0392b
+}
+
+.assessment-list{
+    margin-bottom:26px
+}
+
+.assessment-list-row{
+    font-size:19px;
+    line-height:1.7;
+    padding:4px 6px
+}
+
+.assessment-empty-note{
+    text-align:center;
+    color:#999;
+    font-size:15px;
+    padding:6px
+}
+
+.assessment-comment{
+    font-size:19px;
+    line-height:1.7;
+    margin-bottom:28px
+}
+
+.assessment-footer{
+    text-align:center;
+    font-size:20px;
+    padding-top:16px;
+    border-top:2px solid #222
+}
