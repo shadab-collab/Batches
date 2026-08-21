@@ -70,6 +70,14 @@
         Data Cleanup
     </button>
 
+    <button
+        class="inactive-home-btn"
+        onclick="openHolidaysModal()"
+        style="margin-top:10px;"
+    >
+        Holidays (छुट्टियाँ)
+    </button>
+
 </div>
 
 
@@ -120,6 +128,17 @@
         <div class="field">
 
             <label>
+                Weekly Holiday (हफ़्ते में जिस दिन इस Batch की class नहीं लगती)
+            </label>
+
+            <div id="batchWeeklyHolidays" class="weekday-picker"></div>
+
+        </div>
+
+
+        <div class="field">
+
+            <label>
                 Students
             </label>
 
@@ -152,6 +171,15 @@
         <div class="note">
             Student के सामने Move से दूसरे Batch में भेज सकते हैं।
         </div>
+
+
+        <button
+            class="btn-light"
+            style="width:100%;margin-bottom:14px;"
+            onclick="openAttendancePage()"
+        >
+            Attendance
+        </button>
 
 
         <div class="actions">
@@ -843,6 +871,32 @@
 
 
         <!-- =================================================
+             ATTENDANCE CALENDAR SECTION
+        ================================================== -->
+
+        <div
+            class="student-profile-section"
+            id="attendanceCalendarSection"
+        >
+
+            <div class="student-profile-section-title">
+                Attendance
+            </div>
+
+            <div class="student-profile-section-body">
+                <button
+                    class="btn-main"
+                    onclick="openAttendanceCalendarModal()"
+                    style="width:100%;"
+                >
+                    Monthly Attendance Calendar
+                </button>
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
              OTHER PROFILE DETAILS
         ================================================== -->
 
@@ -1040,6 +1094,100 @@
 
 
 <!-- =====================================================
+     ATTENDANCE PAGE (daily marking, per batch)
+===================================================== -->
+
+<div id="attendancePage" style="display:none;">
+
+    <div class="student-profile-topbar">
+        <button class="student-profile-back" onclick="closeAttendancePage()">← Back</button>
+        <div class="student-profile-heading">Attendance</div>
+    </div>
+
+    <div class="dashboard-wrap">
+
+        <div class="dashboard-tabs">
+            <button class="dashboard-tab" onclick="shiftAttendanceDate(-1)">◀ पिछला दिन</button>
+            <button class="dashboard-tab" onclick="shiftAttendanceDate(1)">अगला दिन ▶</button>
+        </div>
+
+        <div class="field">
+            <label>Date</label>
+            <input type="date" id="attendanceDateInput" onchange="loadAttendanceDay()">
+        </div>
+
+        <div id="attendanceDayBody">
+            <div class="empty">लोड हो रहा है...</div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     HOLIDAYS OVERLAY
+===================================================== -->
+
+<div class="overlay" id="holidaysOverlay">
+    <div class="modal">
+        <h2>Holidays (पूरे दिन की छुट्टी)</h2>
+        <div id="holidaysModalBody"></div>
+        <div class="actions">
+            <button class="btn-light" onclick="closeHolidaysModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- =====================================================
+     ATTENDANCE CALENDAR OVERLAY (edit range + generated image)
+===================================================== -->
+
+<div class="overlay" id="attendanceCalendarOverlay">
+    <div class="modal receipt-modal">
+        <h2>Monthly Attendance Calendar</h2>
+        <div id="attendanceCalendarModalBody"></div>
+        <div class="actions" id="attendanceCalendarModalActions">
+            <button class="btn-main" onclick="generateAttendanceCalendarImage()">Calendar Generate करें</button>
+            <button class="btn-light" onclick="closeAttendanceCalendarModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- =====================================================
+     ATTENDANCE CALENDAR TEMPLATE (rendered off-screen,
+     captured as an image via the same html2canvas flow)
+===================================================== -->
+
+<div id="calendarTemplateWrap" class="reminder-template-wrap">
+    <div id="calendarTemplate" class="calendar-paper">
+
+        <div class="calendar-header">📅 <b>Attendance Calendar</b></div>
+
+        <div class="calendar-meta">
+            <div>👤 <b id="calStudentName"></b></div>
+            <div id="calMonthLabel"></div>
+        </div>
+
+        <div class="calendar-summary" id="calSummary"></div>
+
+        <div class="calendar-grid" id="calGrid"></div>
+
+        <div class="calendar-legend">
+            <span><span class="calendar-legend-dot present"></span> Present</span>
+            <span><span class="calendar-legend-dot absent"></span> Absent</span>
+            <span><span class="calendar-legend-dot holiday"></span> Holiday</span>
+        </div>
+
+        <div class="calendar-footer"><b>Shadab Coaching Center</b></div>
+
+    </div>
+</div>
+
+
+<!-- =====================================================
      SCRIPT
 ===================================================== -->
 
@@ -1060,6 +1208,7 @@
 <script src="js/15-dashboard.js"></script>
 <script src="js/16-cleanup.js"></script>
 <script src="js/17-assessment.js"></script>
+<script src="js/18-attendance.js"></script>
 
 
 </body>

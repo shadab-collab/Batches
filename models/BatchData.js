@@ -30,12 +30,20 @@ const studentSchema = new mongoose.Schema({
   identity: {
     type: String,
     default: ""
+  },
+  batchId: {
+    type: String,
+    default: ""
   }
 }, { _id: false });
 /* =====================================================
    BATCH
 ===================================================== */
 const batchSchema = new mongoose.Schema({
+  id: {
+    type: String,
+    default: ""
+  },
   name: {
     type: String,
     required: true
@@ -43,6 +51,10 @@ const batchSchema = new mongoose.Schema({
   time: {
     type: String,
     default: ""
+  },
+  weeklyHolidays: {
+    type: [Number],
+    default: []
   },
   students: {
     type: [studentSchema],

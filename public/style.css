@@ -1240,3 +1240,167 @@ button{
     padding-top:16px;
     border-top:2px solid #222
 }
+
+
+/* =====================================================
+   WEEKDAY PICKER (per-batch weekly holiday)
+===================================================== */
+
+.weekday-picker{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px
+}
+
+.weekday-chip{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    background:#f2f2f2;
+    padding:6px 10px;
+    border-radius:20px;
+    font-size:13px;
+    cursor:pointer
+}
+
+
+/* =====================================================
+   ATTENDANCE CALENDAR TEMPLATE (WhatsApp image export)
+===================================================== */
+
+.calendar-paper{
+    width:680px;
+    background:#ffffff;
+    padding:40px 42px;
+    font-family:Arial, Helvetica, sans-serif;
+    color:#1a1a1a;
+    box-sizing:border-box
+}
+
+.calendar-header{
+    text-align:center;
+    font-size:24px;
+    font-weight:800;
+    border:2px solid #222;
+    border-radius:16px;
+    padding:12px;
+    margin-bottom:20px
+}
+
+.calendar-meta{
+    text-align:center;
+    font-size:19px;
+    line-height:1.7;
+    margin-bottom:6px
+}
+
+.calendar-summary{
+    text-align:center;
+    font-size:15px;
+    color:#555;
+    margin-bottom:20px
+}
+
+.calendar-weekday-row{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    margin-bottom:8px
+}
+
+.calendar-weekday-cell{
+    text-align:center;
+    font-weight:700;
+    font-size:14px;
+    color:#777
+}
+
+.calendar-days-grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:6px;
+    margin-bottom:22px
+}
+
+.calendar-day-cell{
+    aspect-ratio:1;
+    border-radius:10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:#fafafa
+}
+
+.calendar-day-cell.blank{
+    background:transparent
+}
+
+.calendar-day-cell.muted{
+    background:#f5f5f5;
+    color:#ccc
+}
+
+.calendar-day-cell.present{
+    background:#e6f7ec
+}
+
+.calendar-day-cell.absent{
+    background:#fde8e8
+}
+
+.calendar-day-cell.holiday{
+    background:#f1f1f1
+}
+
+.calendar-mark{
+    font-size:18px;
+    font-weight:800;
+    line-height:1
+}
+
+.calendar-day-cell.present .calendar-mark{
+    color:#1e8e3e
+}
+
+.calendar-day-cell.absent .calendar-mark{
+    color:#c0392b
+}
+
+.calendar-day-cell.holiday .calendar-mark{
+    color:#999;
+    font-size:13px
+}
+
+.calendar-date-num{
+    font-size:13px;
+    color:#555;
+    margin-top:2px
+}
+
+.calendar-legend{
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    font-size:13px;
+    color:#555;
+    margin-bottom:18px
+}
+
+.calendar-legend-dot{
+    display:inline-block;
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    margin-right:5px
+}
+
+.calendar-legend-dot.present{ background:#1e8e3e }
+.calendar-legend-dot.absent{ background:#c0392b }
+.calendar-legend-dot.holiday{ background:#999 }
+
+.calendar-footer{
+    text-align:center;
+    font-size:18px;
+    padding-top:14px;
+    border-top:2px solid #222
+}

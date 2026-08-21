@@ -177,6 +177,9 @@ function normalizeStudent(student) {
   if (typeof student.identity !== "string") {
     student.identity = "";
   }
+  if (typeof student.batchId !== "string") {
+    student.batchId = "";
+  }
   return student;
 }
 /* =====================================================
@@ -193,7 +196,21 @@ function normalizeAllData() {
     if (!Array.isArray(batch.students)) {
       batch.students = [];
     }
+    if (!batch.id) {
+      batch.id = "B-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+    }
+    if (!Array.isArray(batch.weeklyHolidays)) {
+      batch.weeklyHolidays = [];
+    }
     batch.students = batch.students.map(normalizeStudent).filter(student => student.name);
+    /*
+         हर active student का batchId हमेशा
+         उसके असली current batch से sync रहे —
+         attendance को batch से जोड़ने के लिए ज़रूरी।
+      */
+    batch.students.forEach(student => {
+      student.batchId = batch.id;
+    });
   });
   inactiveStudents = inactiveStudents.map(normalizeStudent).filter(student => student.name);
   /*
