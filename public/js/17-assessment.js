@@ -4,7 +4,66 @@ let generatedAssessmentBlob = null;
 
 
 /* =====================================================
-   OPEN / LOAD
+   SUMMARY (shown directly in the profile, like the Fee card)
+===================================================== */
+async function loadAssessmentSummary(student) {
+  const body = document.getElementById("assessmentCardBody");
+  if (!body) {
+    return;
+  }
+  body.innerHTML = `<div class="empty">लोड हो रहा है...</div>`;
+
+  try {
+    const res = await fetch(`/api/assessment/${ student.id }`);
+    const data = await res.json();
+    if (!data.success) {
+      body.innerHTML = `<div class="empty">${ escapeHtml(data.message || "Error") }</div>`;
+      return;
+    }
+    const card = data.card;
+    const hasAnyData = card.studentClass || card.period || card.teacherComment
+      || card.improvementEntries.length || card.gapEntries.length;
+
+    if (!hasAnyData) {
+      body.innerHTML = `
+                <div class="empty">अभी कोई Assessment Data नहीं है</div>
+                <div class="fee-actions">
+                    <button class="btn-main" onclick="openAssessmentModal()">Formative Assessment Card</button>
+                </div>
+            `;
+      return;
+    }
+
+    body.innerHTML = `
+        <div class="fee-summary">
+            ${ card.studentClass ? `<div><strong>कक्षा:</strong> ${ escapeHtml(card.studentClass) }</div>` : "" }
+            ${ card.period ? `<div><strong>मूल्यांकन अवधि:</strong> ${ escapeHtml(card.period) }</div>` : "" }
+        </div>
+        <div class="assessment-summary-block">
+            <div class="assessment-summary-title improvement">🟢 सुधार</div>
+            ${ card.improvementEntries.length
+              ? card.improvementEntries.map((t, i) => `<div class="assessment-summary-row">${ i + 1 }. ${ escapeHtml(t) }</div>`).join("")
+              : '<div class="empty">कोई Entry नहीं</div>' }
+        </div>
+        <div class="assessment-summary-block">
+            <div class="assessment-summary-title gap">🔴 कमी</div>
+            ${ card.gapEntries.length
+              ? card.gapEntries.map((t, i) => `<div class="assessment-summary-row">${ i + 1 }. ${ escapeHtml(t) }</div>`).join("")
+              : '<div class="empty">कोई Entry नहीं</div>' }
+        </div>
+        ${ card.teacherComment ? `<div class="fee-summary"><strong>शिक्षक की टिप्पणी:</strong> ${ escapeHtml(card.teacherComment) }</div>` : "" }
+        <div class="fee-actions">
+            <button class="btn-main" onclick="openAssessmentModal()">Edit / Card Generate करें</button>
+        </div>
+    `;
+  } catch (error) {
+    body.innerHTML = `<div class="empty">Load नहीं हो सका। इंटरनेट चेक करें।</div>`;
+  }
+}
+
+
+/* =====================================================
+   OPEN / LOAD (edit modal)
 ===================================================== */
 async function openAssessmentModal() {
   const student = getCurrentProfileStudent();
@@ -37,6 +96,10 @@ async function openAssessmentModal() {
 
 function closeAssessmentModal() {
   document.getElementById("assessmentOverlay").style.display = "none";
+  // the edit modal may have changed the data — refresh the profile summary behind it
+  if (assessmentStudent) {
+    loadAssessmentSummary(assessmentStudent);
+  }
 }
 
 

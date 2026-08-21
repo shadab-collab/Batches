@@ -1,17 +1,31 @@
 /* =====================================================
-   DAILY MARKING (per batch, from the batch Manage modal)
+   DAILY MARKING (per batch) — reachable directly from the
+   home page, or from inside a batch's Manage modal (which
+   pre-selects that batch)
 ===================================================== */
 let attendanceBatchIndex = null;
 
 function openAttendancePage() {
-  if (currentBatch === null) {
-    return;
-  }
-  attendanceBatchIndex = currentBatch;
+  const cameFromBatchModal = currentBatch !== null;
 
   document.getElementById("overlay").style.display = "none";
+  document.getElementById("studentProfilePage").style.display = "none";
+  document.getElementById("dashboardPage").style.display = "none";
+  document.getElementById("cleanupPage").style.display = "none";
+  document.querySelector(".header").style.display = "none";
+  document.getElementById("batchGrid").style.display = "none";
+  const inactiveWrap = document.querySelector(".inactive-home-wrap");
+  if (inactiveWrap) {
+    inactiveWrap.style.display = "none";
+  }
   document.getElementById("attendancePage").style.display = "block";
   window.scrollTo(0, 0);
+
+  const select = document.getElementById("attendanceBatchSelect");
+  select.innerHTML = batches.map((b, i) => `<option value="${ i }">${ escapeHtml(b.name) } ${ b.time ? "— " + formatTime(b.time) : "" }</option>`).join("");
+
+  attendanceBatchIndex = cameFromBatchModal ? currentBatch : 0;
+  select.value = attendanceBatchIndex;
 
   const dateInput = document.getElementById("attendanceDateInput");
   if (!dateInput.value) {
@@ -20,12 +34,22 @@ function openAttendancePage() {
   loadAttendanceDay();
 }
 
+function onAttendanceBatchChange() {
+  attendanceBatchIndex = Number(document.getElementById("attendanceBatchSelect").value);
+  loadAttendanceDay();
+}
+
 function closeAttendancePage() {
   document.getElementById("attendancePage").style.display = "none";
   attendanceBatchIndex = null;
-  if (currentBatch !== null) {
-    document.getElementById("overlay").style.display = "flex";
+  document.querySelector(".header").style.display = "";
+  document.getElementById("batchGrid").style.display = "";
+  const inactiveWrap = document.querySelector(".inactive-home-wrap");
+  if (inactiveWrap) {
+    inactiveWrap.style.display = "";
   }
+  render();
+  window.scrollTo(0, 0);
 }
 
 function shiftAttendanceDate(deltaDays) {
@@ -42,6 +66,7 @@ async function loadAttendanceDay() {
 
   const batch = batches[attendanceBatchIndex];
   if (!batch) {
+    body.innerHTML = `<div class="empty">कोई Batch नहीं मिला।</div>`;
     return;
   }
   const date = document.getElementById("attendanceDateInput").value;
@@ -217,6 +242,44 @@ async function removeHoliday(date) {
 
 
 /* =====================================================
+   SUMMARY (shown directly in the profile, like the Fee card)
+===================================================== */
+async function loadAttendanceSummary(student) {
+  const body = document.getElementById("attendanceCardBody");
+  if (!body) {
+    return;
+  }
+  body.innerHTML = `<div class="empty">लोड हो रहा है...</div>`;
+
+  const month = new Date().toISOString().slice(0, 7);
+  const weeklyHolidays = findBatchWeeklyHolidays(student.batchId);
+
+  try {
+    const res = await fetch(`/api/attendance/calendar/${ student.id }?month=${ month }&weeklyHolidays=${ weeklyHolidays.join(",") }`);
+    const data = await res.json();
+    if (!data.success) {
+      body.innerHTML = `<div class="empty">${ escapeHtml(data.message || "Error") }</div>`;
+      return;
+    }
+
+    body.innerHTML = `
+        <div class="fee-summary">
+            <div><strong>इस महीने:</strong> ${ HINDI_MONTH_NAMES[Number(month.slice(5, 7)) - 1] }</div>
+            <div><strong>Present:</strong> ${ data.presentCount }</div>
+            <div><strong>Absent:</strong> ${ data.absentCount }</div>
+            <div><strong>Attendance %:</strong> ${ data.percentage === null ? "-" : data.percentage + "%" }</div>
+        </div>
+        <div class="fee-actions">
+            <button class="btn-main" onclick="openAttendanceCalendarModal()">Monthly Calendar देखें / Generate करें</button>
+        </div>
+    `;
+  } catch (error) {
+    body.innerHTML = `<div class="empty">Load नहीं हो सका। इंटरनेट चेक करें।</div>`;
+  }
+}
+
+
+/* =====================================================
    MONTHLY ATTENDANCE CALENDAR (per student)
 ===================================================== */
 let attendanceCalendarStudent = null;
@@ -248,6 +311,10 @@ function openAttendanceCalendarModal() {
 
 function closeAttendanceCalendarModal() {
   document.getElementById("attendanceCalendarOverlay").style.display = "none";
+  // marking/generating may have changed the data — refresh the profile summary behind it
+  if (attendanceCalendarStudent) {
+    loadAttendanceSummary(attendanceCalendarStudent);
+  }
 }
 
 function findBatchWeeklyHolidays(batchId) {

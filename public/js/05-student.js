@@ -58,6 +58,8 @@ function openStudentProfile(bi, si) {
   document.getElementById("expellActionRow").style.display = "none";
   updateFamilyProfile(student);
   loadFeeCard(student);
+  loadAssessmentSummary(student);
+  loadAttendanceSummary(student);
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";
   document.querySelector(".header").style.display = "none";

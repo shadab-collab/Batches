@@ -78,6 +78,14 @@
         Holidays (छुट्टियाँ)
     </button>
 
+    <button
+        class="inactive-home-btn"
+        onclick="openAttendancePage()"
+        style="margin-top:10px;"
+    >
+        Attendance
+    </button>
+
 </div>
 
 
@@ -857,14 +865,11 @@
                 Formative Assessment
             </div>
 
-            <div class="student-profile-section-body">
-                <button
-                    class="btn-main"
-                    onclick="openAssessmentModal()"
-                    style="width:100%;"
-                >
-                    Formative Assessment Card
-                </button>
+            <div
+                class="student-profile-section-body"
+                id="assessmentCardBody"
+            >
+                -
             </div>
 
         </div>
@@ -883,14 +888,11 @@
                 Attendance
             </div>
 
-            <div class="student-profile-section-body">
-                <button
-                    class="btn-main"
-                    onclick="openAttendanceCalendarModal()"
-                    style="width:100%;"
-                >
-                    Monthly Attendance Calendar
-                </button>
+            <div
+                class="student-profile-section-body"
+                id="attendanceCardBody"
+            >
+                -
             </div>
 
         </div>
@@ -1105,6 +1107,11 @@
     </div>
 
     <div class="dashboard-wrap">
+
+        <div class="field">
+            <label>Batch चुनें</label>
+            <select id="attendanceBatchSelect" onchange="onAttendanceBatchChange()"></select>
+        </div>
 
         <div class="dashboard-tabs">
             <button class="dashboard-tab" onclick="shiftAttendanceDate(-1)">◀ पिछला दिन</button>
