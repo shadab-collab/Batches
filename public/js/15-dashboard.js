@@ -370,9 +370,17 @@ async function loadDashboardRange() {
       return;
     }
     resultsBox.innerHTML = data.buckets.map(b => `
-            <div class="dashboard-row">
-                <span>${ escapeHtml(b.bucket) }</span>
-                <strong>₹${ b.amount }</strong>
+            <div class="dashboard-card">
+                <div class="dashboard-row">
+                    <span>${ escapeHtml(b.bucket) }</span>
+                    <strong>₹${ b.amount }</strong>
+                </div>
+                ${ (b.items || []).map(item => `
+                    <div class="dashboard-collection-item">
+                        <span>${ escapeHtml(item.name) }</span>
+                        <span>₹${ item.amount } <span class="dashboard-fee-type">(${ item.feeType })</span></span>
+                    </div>
+                `).join("") }
             </div>
         `).join("");
   } catch (error) {

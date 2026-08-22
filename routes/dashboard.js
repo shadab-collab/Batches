@@ -4,8 +4,44 @@ const router = express.Router();
 const { MonthlySnapshot } = require("../models/Dashboard");
 const { MonthlyAdjustment, AdjustmentLog, ADJUSTABLE_FIELDS } = require("../models/DashboardAdjustment");
 const { FeeProfile, Payment } = require("../models/Fee");
+const { BatchData } = require("../models/BatchData");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
+
+
+/* Builds a lookup so a Payment/FeeProfile's bare ownerType+ownerKey
+   can be turned into a readable name — solo student's name, or a
+   family's members joined "A + B + C". Falls back gracefully for
+   owners that no longer exist anywhere (deleted/orphaned data). */
+async function buildOwnerNameLookup() {
+  const batchData = await BatchData.findOne({ key: "main" }).lean();
+  const studentNameById = {};
+  const familyMembersByCode = {};
+
+  const allStudents = [];
+  ((batchData && batchData.batches) || []).forEach(b => allStudents.push(...(b.students || [])));
+  allStudents.push(...((batchData && batchData.inactiveStudents) || []));
+
+  allStudents.forEach(s => {
+    studentNameById[s.id] = s.name;
+    if (s.familyCode) {
+      if (!familyMembersByCode[s.familyCode]) {
+        familyMembersByCode[s.familyCode] = [];
+      }
+      familyMembersByCode[s.familyCode].push(s.name);
+    }
+  });
+
+  return {
+    resolve(ownerType, ownerKey) {
+      if (ownerType === "family") {
+        const members = familyMembersByCode[ownerKey];
+        return members && members.length ? members.join(" + ") : `Family ${ ownerKey } (हटाया/पुराना)`;
+      }
+      return studentNameById[ownerKey] || "Student (हटाया/पुराना)";
+    }
+  };
+}
 
 
 function requireMongo(req, res, next) {
@@ -415,8 +451,15 @@ router.get("/range", async (req, res) => {
         continue;
       }
       seenOwners.add(key);
-      admissionEntries.push({ date: p.admissionFeePaidDate, amount: p.admissionFeeAmount || 0 });
+      admissionEntries.push({
+        date: p.admissionFeePaidDate,
+        amount: p.admissionFeeAmount || 0,
+        ownerType: p.ownerType,
+        ownerKey: p.ownerKey
+      });
     }
+
+    const nameLookup = await buildOwnerNameLookup();
 
     function bucketKey(dateIso) {
       if (groupBy === "week") {
@@ -429,16 +472,40 @@ router.get("/range", async (req, res) => {
     }
 
     const buckets = {};
-    for (const p of payments) {
-      const k = bucketKey(p.paymentDate);
-      buckets[k] = (buckets[k] || 0) + p.amount;
-    }
-    for (const a of admissionEntries) {
-      const k = bucketKey(a.date);
-      buckets[k] = (buckets[k] || 0) + a.amount;
+
+    function addToBucket(dateIso, item) {
+      const k = bucketKey(dateIso);
+      if (!buckets[k]) {
+        buckets[k] = { amount: 0, items: [] };
+      }
+      buckets[k].amount += item.amount;
+      buckets[k].items.push(item);
     }
 
-    const result = Object.keys(buckets).sort().map(key => ({ bucket: key, amount: buckets[key] }));
+    for (const p of payments) {
+      addToBucket(p.paymentDate, {
+        name: nameLookup.resolve(p.ownerType, p.ownerKey),
+        ownerType: p.ownerType,
+        amount: p.amount,
+        feeType: "Tuition",
+        note: p.note || ""
+      });
+    }
+    for (const a of admissionEntries) {
+      addToBucket(a.date, {
+        name: nameLookup.resolve(a.ownerType, a.ownerKey),
+        ownerType: a.ownerType,
+        amount: a.amount,
+        feeType: "Admission Fee",
+        note: ""
+      });
+    }
+
+    const result = Object.keys(buckets).sort().map(key => ({
+      bucket: key,
+      amount: buckets[key].amount,
+      items: buckets[key].items
+    }));
 
     res.json({ success: true, buckets: result });
 

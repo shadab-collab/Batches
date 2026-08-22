@@ -1433,3 +1433,22 @@ button{
     color:#333;
     padding:3px 0
 }
+
+
+/* =====================================================
+   DASHBOARD DAILY/WEEKLY COLLECTION DETAIL
+===================================================== */
+
+.dashboard-collection-item{
+    display:flex;
+    justify-content:space-between;
+    padding:5px 0 5px 14px;
+    font-size:13px;
+    color:#555;
+    border-top:1px dashed #eee
+}
+
+.dashboard-fee-type{
+    color:#999;
+    font-size:11px
+}
