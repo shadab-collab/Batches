@@ -137,6 +137,7 @@ function renderFeeCard(data) {
         <div class="fee-actions">
             <button class="btn-main" onclick="openPaymentModal()">Record Payment</button>
             <button class="btn-light" onclick="openFeeSetupModal()">Edit Fee</button>
+            <button class="btn-light" onclick="openPaymentHistoryModal()">Payment History</button>
             ${ data.totalDue > 0 ? '<button class="btn-light" onclick="openReminderModal()">Reminder बनाएं</button>' : "" }
         </div>
 
@@ -434,10 +435,31 @@ function openPaymentModal() {
         `).join("")
     : `<div class="empty">कोई बकाया Cycle नहीं है।</div>`;
 
+  // Advance payment for the NEXT cycle (not due yet) — e.g. parent wants to
+  // pay early, before this cycle has even started
+  let advanceRowHtml = "";
+  const cycles = currentFeeData.cycles || [];
+  if (cycles.length && currentFeeData.activeProfile) {
+    const dueDateType = currentFeeData.activeProfile.dueDateType;
+    const latestCycle = cycles[cycles.length - 1];
+    const after = FeeUtils.nextMonth(
+      FeeUtils.parseISODate(latestCycle.cycleKey).year,
+      FeeUtils.parseISODate(latestCycle.cycleKey).month
+    );
+    const nextCycle = FeeUtils.cycleForMonth(dueDateType, after.year, after.month);
+    advanceRowHtml = `
+            <div class="fee-member-input">
+                <span>Advance — ${ FeeUtils.formatCycleRange(nextCycle) } (अभी due नहीं है)</span>
+                <input type="number" class="fee-payment-amount" data-cycle-key="${ nextCycle.cycleKey }" placeholder="0">
+            </div>
+        `;
+  }
+
   document.getElementById("feeModalBody").innerHTML = `
         <div class="field">
             <label>किस Cycle में कितना जमा हुआ</label>
             ${ cycleRowsHtml }
+            ${ advanceRowHtml }
         </div>
 
         <div class="field">
@@ -501,7 +523,116 @@ function saveFeeModal() {
     savePayment();
   } else if (title === "Charity दर्ज करें") {
     saveCharity();
+  } else if (title === "Payment Edit करें") {
+    savePaymentEdit();
   } else {
     saveFeeProfile();
+  }
+}
+
+
+/* =====================================================
+   PAYMENT HISTORY (view, edit, delete individual entries)
+===================================================== */
+let editingPaymentId = null;
+
+function cycleLabelFor(cycleKey) {
+  const cycle = (currentFeeData.cycles || []).find(c => c.cycleKey === cycleKey);
+  return cycle ? FeeUtils.formatCycleRange(cycle) : cycleKey;
+}
+
+function openPaymentHistoryModal() {
+  const payments = (currentFeeData.payments || []).slice().sort((a, b) => (a.paymentDate < b.paymentDate ? 1 : -1));
+
+  document.getElementById("feeModalTitle").textContent = "Payment History";
+
+  document.getElementById("feeModalBody").innerHTML = payments.length
+    ? payments.map(p => `
+            <div class="fee-row">
+                <div class="fee-row-main">
+                    <span>${ cycleLabelFor(p.cycleKey) }</span>
+                    <span>₹${ p.amount } ${ p.type === "charity" ? "(Charity)" : "" }</span>
+                </div>
+                <div class="fee-row-sub">
+                    ${ FeeUtils.formatDDMM(p.paymentDate) }${ p.note ? " — " + escapeHtml(p.note) : "" }
+                </div>
+                <div class="fee-row-actions">
+                    <button class="btn-light small-btn" onclick="openEditPaymentModal('${ p._id }', ${ p.amount }, '${ p.paymentDate }', '${ escapeHtml(p.note || "") }')">Edit</button>
+                    <button class="btn-danger small-btn" onclick="deletePaymentEntry('${ p._id }')">Delete</button>
+                </div>
+            </div>
+        `).join("")
+    : `<div class="empty">अभी कोई Payment/Charity Entry नहीं है</div>`;
+
+  document.getElementById("feeOverlay").style.display = "flex";
+}
+
+function openEditPaymentModal(id, amount, date, note) {
+  editingPaymentId = id;
+  document.getElementById("feeModalTitle").textContent = "Payment Edit करें";
+  document.getElementById("feeModalBody").innerHTML = `
+        <div class="field">
+            <label>Amount (₹)</label>
+            <input id="feePaymentEditAmount" type="number" value="${ amount }">
+        </div>
+        <div class="field">
+            <label>Date</label>
+            <input id="feePaymentEditDate" type="date" value="${ date }">
+        </div>
+        <div class="field">
+            <label>Note (optional)</label>
+            <input id="feePaymentEditNote" type="text" value="${ escapeHtml(note) }">
+        </div>
+        <div class="empty">यह किसी गलत/भूल से हुई Entry को सही करने के लिए है।</div>
+    `;
+}
+
+async function savePaymentEdit() {
+  const owner = currentFeeOwner;
+  const amount = Number(document.getElementById("feePaymentEditAmount").value) || 0;
+  const paymentDate = document.getElementById("feePaymentEditDate").value;
+  const note = document.getElementById("feePaymentEditNote").value;
+
+  if (amount <= 0 || !paymentDate) {
+    alert("Amount और Date सही भरें");
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/payment/${ editingPaymentId }/edit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount, paymentDate, note })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Update नहीं हुआ");
+      return;
+    }
+    closeFeeModal();
+    await loadFeeCard(currentFeeStudent);
+  } catch (error) {
+    alert("Update नहीं हो सका। इंटरनेट चेक करें।");
+  }
+}
+
+async function deletePaymentEntry(id) {
+  if (!confirm("यह Entry हमेशा के लिए हटानी है?")) {
+    return;
+  }
+  const owner = currentFeeOwner;
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/payment/${ id }/delete`, {
+      method: "POST"
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Delete नहीं हो सका");
+      return;
+    }
+    await loadFeeCard(currentFeeStudent);
+    openPaymentHistoryModal();
+  } catch (error) {
+    alert("Delete नहीं हो सका। इंटरनेट चेक करें।");
   }
 }

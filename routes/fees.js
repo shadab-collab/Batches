@@ -260,6 +260,40 @@ router.post("/:ownerType/:ownerKey/payment", async (req, res) => {
   }
 
   try {
+    // Advance payments can target a cycle that hasn't come due yet, so it
+    // may not exist as a FeeCycle row — create it now (locked from the
+    // currently active profile) so the payment shows up immediately
+    // instead of staying invisible until the cycle's due date arrives.
+    const profiles = await FeeProfile.find({ ownerType, ownerKey }).sort({ effectiveFrom: 1 });
+    if (profiles.length) {
+      const dueDateType = profiles[0].dueDateType;
+      for (const a of allocations) {
+        const existing = await FeeCycle.findOne({ ownerType, ownerKey, cycleKey: a.cycleKey });
+        if (!existing) {
+          const profile = profileForCycle(profiles, a.cycleKey);
+          if (profile) {
+            const parsed = FeeUtils.parseISODate(a.cycleKey);
+            const cycle = FeeUtils.cycleForMonth(dueDateType, parsed.year, parsed.month);
+            await FeeCycle.findOneAndUpdate(
+              { ownerType, ownerKey, cycleKey: a.cycleKey },
+              {
+                $setOnInsert: {
+                  ownerType,
+                  ownerKey,
+                  cycleKey: cycle.cycleKey,
+                  dueDate: cycle.dueDate,
+                  cycleStart: cycle.cycleStart,
+                  cycleEnd: cycle.cycleEnd,
+                  amountDue: amountForProfile(profile)
+                }
+              },
+              { upsert: true }
+            );
+          }
+        }
+      }
+    }
+
     const transactionId = crypto.randomBytes(8).toString("hex");
 
     const docs = allocations.map(a => ({
@@ -279,6 +313,47 @@ router.post("/:ownerType/:ownerKey/payment", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Could not record payment" });
+  }
+});
+
+
+/* =====================================================
+   EDIT / DELETE A SINGLE PAYMENT OR CHARITY ENTRY
+   For genuine correction of a mistaken entry — this directly
+   fixes/removes the row that was wrong.
+===================================================== */
+router.post("/:ownerType/:ownerKey/payment/:paymentId/edit", async (req, res) => {
+  const { ownerType, ownerKey, paymentId } = req.params;
+  const { amount, paymentDate, note } = req.body;
+
+  if (typeof amount !== "number" || amount <= 0 || !paymentDate) {
+    return res.status(400).json({ success: false, message: "Amount और Date जरूरी हैं" });
+  }
+
+  try {
+    const result = await Payment.updateOne(
+      { _id: paymentId, ownerType, ownerKey },
+      { $set: { amount, paymentDate, note: note || "" } }
+    );
+    if (!result.matchedCount) {
+      return res.status(404).json({ success: false, message: "यह Entry नहीं मिली" });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Update नहीं हो सका" });
+  }
+});
+
+router.post("/:ownerType/:ownerKey/payment/:paymentId/delete", async (req, res) => {
+  const { ownerType, ownerKey, paymentId } = req.params;
+
+  try {
+    await Payment.deleteOne({ _id: paymentId, ownerType, ownerKey });
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Delete नहीं हो सका" });
   }
 });
 
