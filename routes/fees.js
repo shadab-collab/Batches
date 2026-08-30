@@ -3,6 +3,7 @@ const router = express.Router();
 const crypto = require("crypto");
 
 const { FeeProfile, FeeCycle, Payment } = require("../models/Fee");
+const { BatchData } = require("../models/BatchData");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
 
@@ -610,6 +611,115 @@ router.post("/purge-owner", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Delete नहीं हो सका" });
+  }
+});
+
+
+const MONTH_CODES = ["JN", "FB", "MR", "AP", "MY", "JU", "JL", "AU", "SP", "OC", "NV", "DC"];
+function monthAbbrev(cycleKey) {
+  return MONTH_CODES[Number(cycleKey.split("-")[1]) - 1];
+}
+
+function pendingMonthCodes(dueDateType, joiningIso, profiles, paidByCycle, todayIso) {
+  const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
+  const currentCycle = FeeUtils.getCurrentCycle(dueDateType, todayIso);
+  if (FeeUtils.compareISODate(firstCycle.cycleKey, currentCycle.cycleKey) > 0) {
+    return [];
+  }
+  const cycleKeys = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, currentCycle.cycleKey).map(c => c.cycleKey);
+  const codes = [];
+  for (const key of cycleKeys) {
+    const profile = profileForCycle(profiles, key);
+    if (!profile) {
+      continue;
+    }
+    const due = amountForProfile(profile);
+    const paid = paidByCycle[key] || 0;
+    if (paid < due) {
+      codes.push(monthAbbrev(key));
+    }
+  }
+  return codes;
+}
+
+
+/* =====================================================
+   MONTHLY WALL LIST
+   GET /api/fees/monthly-list
+   Groups every currently active student by their fee due
+   date (1st or 15th), keeping family members adjacent, with
+   each owner's pending months auto-computed from real Fee
+   data — built to directly replace a hand-maintained paper
+   list, so it needs zero manual re-encoding each month.
+===================================================== */
+router.get("/monthly-list", async (req, res) => {
+  try {
+    const batchData = await BatchData.findOne({ key: "main" }).lean();
+    const allStudents = [];
+    ((batchData && batchData.batches) || []).forEach(b => allStudents.push(...(b.students || [])));
+
+    const ownersMap = new Map();
+    allStudents.forEach(s => {
+      const ownerType = s.familyCode ? "family" : "student";
+      const ownerKey = s.familyCode || s.id;
+      if (!ownersMap.has(ownerKey)) {
+        ownersMap.set(ownerKey, { ownerType, ownerKey, members: [] });
+      }
+      ownersMap.get(ownerKey).members.push({ id: s.id, name: s.name, identity: s.identity || "" });
+    });
+
+    const allProfiles = await FeeProfile.find({}).sort({ effectiveFrom: 1 }).lean();
+    const allPayments = await Payment.find({}).lean();
+
+    const profilesByOwner = {};
+    allProfiles.forEach(p => {
+      const key = `${ p.ownerType }:${ p.ownerKey }`;
+      if (!profilesByOwner[key]) {
+        profilesByOwner[key] = [];
+      }
+      profilesByOwner[key].push(p);
+    });
+
+    const paidByOwnerCycle = {};
+    allPayments.forEach(pay => {
+      const key = `${ pay.ownerType }:${ pay.ownerKey }`;
+      if (!paidByOwnerCycle[key]) {
+        paidByOwnerCycle[key] = {};
+      }
+      paidByOwnerCycle[key][pay.cycleKey] = (paidByOwnerCycle[key][pay.cycleKey] || 0) + pay.amount;
+    });
+
+    const today = FeeUtils.todayISO();
+    const due01 = [];
+    const due15 = [];
+    const noProfile = [];
+
+    for (const owner of ownersMap.values()) {
+      const key = `${ owner.ownerType }:${ owner.ownerKey }`;
+      const ownerProfiles = profilesByOwner[key] || [];
+
+      if (!ownerProfiles.length) {
+        noProfile.push(owner);
+        continue;
+      }
+
+      const dueDateType = ownerProfiles[0].dueDateType;
+      const joiningIso = ownerProfiles[0].joiningDate || ownerProfiles[0].effectiveFrom;
+      const codes = pendingMonthCodes(dueDateType, joiningIso, ownerProfiles, paidByOwnerCycle[key] || {}, today);
+
+      const entry = { ...owner, monthCodes: codes };
+      if (dueDateType === 1) {
+        due01.push(entry);
+      } else {
+        due15.push(entry);
+      }
+    }
+
+    res.json({ success: true, due01, due15, noProfile });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Load नहीं हो सका" });
   }
 });
 

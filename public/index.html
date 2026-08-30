@@ -86,6 +86,14 @@
         Attendance
     </button>
 
+    <button
+        class="inactive-home-btn"
+        onclick="openMonthlyListModal()"
+        style="margin-top:10px;"
+    >
+        Monthly Name List
+    </button>
+
 </div>
 
 
@@ -1195,6 +1203,22 @@
 
 
 <!-- =====================================================
+     MONTHLY NAME LIST OVERLAY
+===================================================== -->
+
+<div class="overlay" id="monthlyListOverlay">
+    <div class="modal receipt-modal">
+        <h2>Monthly Name List</h2>
+        <div id="monthlyListBody"></div>
+        <div class="actions">
+            <button class="btn-main" onclick="copyMonthlyListText()">Copy करें</button>
+            <button class="btn-light" onclick="closeMonthlyListModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- =====================================================
      SCRIPT
 ===================================================== -->
 
@@ -1216,6 +1240,7 @@
 <script src="js/16-cleanup.js"></script>
 <script src="js/17-assessment.js"></script>
 <script src="js/18-attendance.js"></script>
+<script src="js/19-monthly-list.js"></script>
 
 
 </body>
