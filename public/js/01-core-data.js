@@ -177,6 +177,9 @@ function normalizeStudent(student) {
   if (typeof student.identity !== "string") {
     student.identity = "";
   }
+  if (typeof student.listCodeName !== "string") {
+    student.listCodeName = "";
+  }
   if (typeof student.batchId !== "string") {
     student.batchId = "";
   }

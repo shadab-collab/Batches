@@ -31,6 +31,10 @@ const studentSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  listCodeName: {
+    type: String,
+    default: ""
+  },
   batchId: {
     type: String,
     default: ""

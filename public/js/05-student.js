@@ -106,3 +106,23 @@ function editStudentIdentity() {
   saveData();
   document.getElementById("pageStudentIdentity").textContent = student.identity;
 }
+
+/* =====================================================
+   EDIT LIST CODE NAME
+   Their own personal shorthand (e.g. "AA SAMYA", "MITHTHU
+   SAISHTA") shown in place of the real name only on the
+   Monthly Name List — everywhere else in the app still
+   shows the actual name.
+===================================================== */
+function editListCodeName() {
+  const student = getCurrentProfileStudent();
+  if (!student) {
+    return;
+  }
+  const value = prompt("Monthly List के लिए Code Name डालें (जैसे: AA SAMYA, MITHTHU SAISHTA):\nखाली छोड़ने पर असली नाम ही दिखेगा।", student.listCodeName || "");
+  if (value === null) {
+    return;
+  }
+  student.listCodeName = value.trim();
+  saveData();
+}

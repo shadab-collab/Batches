@@ -1,34 +1,19 @@
 let monthlyListText = "";
 
-function formatOwnerLines(owner) {
+function formatOwnerLines(owner, prefix) {
   const codeSuffix = owner.monthCodes.length ? ` {${ owner.monthCodes.join(" ") }}` : "";
   return owner.members.map(m => {
-    const identitySuffix = m.identity ? ` (${ m.identity })` : "";
-    return `${ m.name }${ identitySuffix }${ codeSuffix }`;
+    const displayName = (m.listCodeName && m.listCodeName.trim()) ? m.listCodeName : m.name;
+    return `${ prefix } ${ displayName.toUpperCase() }${ codeSuffix }`;
   }).join("\n");
 }
 
 function buildMonthlyListText(data) {
   const lines = [];
 
-  lines.push("01 तारीख", "");
-  if (data.due01.length) {
-    data.due01.forEach(owner => lines.push(formatOwnerLines(owner)));
-  } else {
-    lines.push("(कोई नहीं)");
-  }
-
-  lines.push("", "15 तारीख", "");
-  if (data.due15.length) {
-    data.due15.forEach(owner => lines.push(formatOwnerLines(owner)));
-  } else {
-    lines.push("(कोई नहीं)");
-  }
-
-  if (data.noProfile.length) {
-    lines.push("", "Fee तय नहीं है", "");
-    data.noProfile.forEach(owner => lines.push(formatOwnerLines({ ...owner, monthCodes: [] })));
-  }
+  data.due01.forEach(owner => lines.push(formatOwnerLines(owner, "01")));
+  data.due15.forEach(owner => lines.push(formatOwnerLines(owner, "15")));
+  data.noProfile.forEach(owner => lines.push(formatOwnerLines({ ...owner, monthCodes: [] }, "00")));
 
   return lines.join("\n");
 }

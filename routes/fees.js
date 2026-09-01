@@ -665,7 +665,7 @@ router.get("/monthly-list", async (req, res) => {
       if (!ownersMap.has(ownerKey)) {
         ownersMap.set(ownerKey, { ownerType, ownerKey, members: [] });
       }
-      ownersMap.get(ownerKey).members.push({ id: s.id, name: s.name, identity: s.identity || "" });
+      ownersMap.get(ownerKey).members.push({ id: s.id, name: s.name, identity: s.identity || "", listCodeName: s.listCodeName || "" });
     });
 
     const allProfiles = await FeeProfile.find({}).sort({ effectiveFrom: 1 }).lean();
