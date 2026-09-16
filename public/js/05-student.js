@@ -47,6 +47,7 @@ function openStudentProfile(bi, si) {
   }
   document.getElementById("pageStudentName").textContent = student.name;
   document.getElementById("pageStudentIdentity").textContent = student.identity || "";
+  document.getElementById("pageStudentAdmissionDate").value = student.admissionDate || "";
   document.getElementById("pageStudentBatch").textContent = batch.name;
   document.getElementById("pageStudentTime").textContent = formatTime(batch.time);
   document.getElementById("pageStudentPosition").textContent = si + 1;
@@ -124,5 +125,20 @@ function editListCodeName() {
     return;
   }
   student.listCodeName = value.trim();
+  saveData();
+}
+/* =====================================================
+   EDIT ADMISSION DATE
+   Shown read/write on every student's profile (active or
+   inactive) — a plain date field, saved the moment it's
+   changed, same as every other profile edit in this app.
+===================================================== */
+function saveAdmissionDate() {
+  const student = getCurrentProfileStudent();
+  if (!student) {
+    return;
+  }
+  const value = document.getElementById("pageStudentAdmissionDate").value;
+  student.admissionDate = value || "";
   saveData();
 }

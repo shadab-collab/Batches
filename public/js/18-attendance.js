@@ -4,6 +4,10 @@
    pre-selects that batch)
 ===================================================== */
 let attendanceBatchIndex = null;
+// Working state for the day currently open — toggling a student only
+// changes this in memory; nothing is saved until "Submit" is pressed.
+let attendancePendingAbsent = new Set();
+let attendanceDayStudentIds = [];
 
 function openAttendancePage() {
   const cameFromBatchModal = currentBatch !== null;
@@ -106,33 +110,76 @@ async function loadAttendanceDay() {
       body.innerHTML = `<div class="empty">${ escapeHtml(data.message || "Error") }</div>`;
       return;
     }
-    const absentSet = new Set(data.absentStudentIds);
 
-    body.innerHTML = students.map(s => {
-      const isAbsent = absentSet.has(s.id);
-      return `
-                <div class="dashboard-row">
-                    <span>${ escapeHtml(s.name) }${ s.identity ? ` <span class="student-identity">(${ escapeHtml(s.identity) })</span>` : "" }</span>
-                    <button class="small-btn ${ isAbsent ? "btn-danger" : "btn-light" }" onclick="toggleAttendance('${ s.id }', ${ !isAbsent })">
-                        ${ isAbsent ? "Absent ✗" : "Present ✓" }
-                    </button>
-                </div>
-            `;
-    }).join("");
+    // Fresh working copy for this batch+date — every tap below only
+    // touches this set; the server isn't touched again until Submit.
+    attendanceDayStudentIds = students.map(s => s.id);
+    attendancePendingAbsent = new Set(data.absentStudentIds);
+
+    renderAttendanceRows(students);
   } catch (error) {
     body.innerHTML = `<div class="empty">Load नहीं हो सका। इंटरनेट चेक करें।</div>`;
   }
 }
 
-async function toggleAttendance(studentId, makeAbsent) {
+/* Redraws the student list from attendancePendingAbsent — pure UI,
+   no network call. Called after every tap and after a submit. */
+function renderAttendanceRows(students) {
+  const body = document.getElementById("attendanceDayBody");
+  const rows = students.map(s => {
+    const isAbsent = attendancePendingAbsent.has(s.id);
+    return `
+                <div class="dashboard-row">
+                    <span>${ escapeHtml(s.name) }${ s.identity ? ` <span class="student-identity">(${ escapeHtml(s.identity) })</span>` : "" }</span>
+                    <button class="small-btn ${ isAbsent ? "btn-danger" : "btn-light" }" onclick="toggleAttendanceLocal('${ s.id }')">
+                        ${ isAbsent ? "Absent ✗" : "Present ✓" }
+                    </button>
+                </div>
+            `;
+  }).join("");
+
+  body.innerHTML = `
+        ${ rows }
+        <button class="btn-main" style="width:100%;margin-top:14px;padding:12px;font-size:15px;" onclick="submitAttendanceDay()">
+            ✔ Submit — पूरे Batch की Attendance एक साथ Save करें
+        </button>
+    `;
+}
+
+/* Just flips the in-memory mark for one student and redraws —
+   no server round-trip, so tapping through a whole batch is instant. */
+function toggleAttendanceLocal(studentId) {
+  if (attendancePendingAbsent.has(studentId)) {
+    attendancePendingAbsent.delete(studentId);
+  } else {
+    attendancePendingAbsent.add(studentId);
+  }
+  const batch = batches[attendanceBatchIndex];
+  if (batch) {
+    renderAttendanceRows(batch.students);
+  }
+}
+
+/* One single save for the whole batch+date — this is the only
+   point where attendance actually reaches the server. */
+async function submitAttendanceDay() {
   const date = document.getElementById("attendanceDateInput").value;
   try {
-    await fetch("/api/attendance/mark", {
+    const res = await fetch("/api/attendance/mark-batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId, date, absent: makeAbsent })
+      body: JSON.stringify({
+        date,
+        studentIds: attendanceDayStudentIds,
+        absentStudentIds: Array.from(attendancePendingAbsent)
+      })
     });
-    loadAttendanceDay();
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Save नहीं हो सका।");
+      return;
+    }
+    alert("Attendance Save हो गई ✔");
   } catch (error) {
     alert("Save नहीं हो सका। इंटरनेट चेक करें।");
   }

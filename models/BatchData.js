@@ -15,6 +15,10 @@ const studentSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  admissionDate: {
+    type: String,
+    default: ""
+  },
   active: {
     type: Boolean,
     default: true

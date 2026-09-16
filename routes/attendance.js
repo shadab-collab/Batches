@@ -47,6 +47,45 @@ router.post("/mark", async (req, res) => {
 
 
 /* =====================================================
+   MARK A WHOLE BATCH'S ATTENDANCE FOR ONE DAY, IN ONE GO
+   POST /api/attendance/mark-batch
+   Body: { date, studentIds: [...every student in the batch...],
+           absentStudentIds: [...just the ones marked Absent...] }
+   Replaces the day's attendance for exactly this set of students
+   in a single write — clears whatever was saved before for
+   date+studentIds, then inserts one row per absent student. This
+   is what lets a whole batch be submitted with one tap instead of
+   one API call per student.
+===================================================== */
+router.post("/mark-batch", async (req, res) => {
+  const { date, studentIds, absentStudentIds } = req.body;
+
+  if (!date || !Array.isArray(studentIds) || !studentIds.length) {
+    return res.status(400).json({ success: false, message: "date और studentIds जरूरी हैं" });
+  }
+
+  try {
+    await AttendanceRecord.deleteMany({ date, studentId: { $in: studentIds } });
+
+    const validStudentIds = new Set(studentIds);
+    const absentSet = new Set((absentStudentIds || []).filter(id => validStudentIds.has(id)));
+
+    if (absentSet.size) {
+      await AttendanceRecord.insertMany(
+        Array.from(absentSet).map(studentId => ({ studentId, date })),
+        { ordered: false }
+      );
+    }
+
+    res.json({ success: true, absentCount: absentSet.size });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Save नहीं हुआ" });
+  }
+});
+
+
+/* =====================================================
    DAILY VIEW (for the marking UI)
    POST /api/attendance/day
    Body: { date, studentIds: [...] }

@@ -715,6 +715,22 @@ router.get("/monthly-list", async (req, res) => {
       }
     }
 
+    // Alphabetical order: sort each family's own members first, then sort
+    // every owner (solo student or whole family) by its first member's name
+    // — so a family always sits together, in the right alphabetical spot.
+    function displayName(member) {
+      return (member.listCodeName && member.listCodeName.trim()) ? member.listCodeName : member.name;
+    }
+    function sortOwnersAlphabetically(list) {
+      list.forEach(owner => {
+        owner.members.sort((a, b) => displayName(a).localeCompare(displayName(b), "hi"));
+      });
+      list.sort((a, b) => displayName(a.members[0]).localeCompare(displayName(b.members[0]), "hi"));
+    }
+    sortOwnersAlphabetically(due01);
+    sortOwnersAlphabetically(due15);
+    sortOwnersAlphabetically(noProfile);
+
     res.json({ success: true, due01, due15, noProfile });
 
   } catch (error) {

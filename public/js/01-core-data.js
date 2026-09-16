@@ -140,7 +140,8 @@ function createStudent(name) {
     id: "S-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
     name: String(name),
     familyCode: "",
-    active: true
+    active: true,
+    admissionDate: (typeof FeeUtils !== "undefined" ? FeeUtils.todayISO() : "")
   };
 }
 /* =====================================================
