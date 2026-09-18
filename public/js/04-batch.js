@@ -129,19 +129,25 @@ function renderStudents() {
   if (!list || currentBatch === null) {
     return;
   }
-  const students = batches[currentBatch].students;
-  if (!students.length) {
+  const allStudents = batches[currentBatch].students;
+  const visible = allStudents
+    .map((student, i) => ({ student, i }))
+    .filter(entry => !entry.student.away);
+  if (!visible.length) {
     list.innerHTML = `<div class="empty">
-                कोई Student नहीं
+                कोई Student नहीं (Temporarily Away वाले "Temporarily Away" page में देखें)
             </div>`;
     return;
   }
-  list.innerHTML = students.map((student, i) => `
+  list.innerHTML = visible.map((entry, vi) => {
+    const student = entry.student;
+    const i = entry.i;
+    return `
 
                 <div class="student-row">
 
                     <div class="serial-manage">
-                        ${ i + 1 }.
+                        ${ vi + 1 }.
                     </div>
 
 
@@ -164,7 +170,7 @@ function renderStudents() {
                     <button
                         class="small-btn btn-light"
                         onclick="moveUp(${ i })"
-                        ${ i === 0 ? "disabled" : "" }
+                        ${ vi === 0 ? "disabled" : "" }
                     >
                         ↑
                     </button>
@@ -173,7 +179,7 @@ function renderStudents() {
                     <button
                         class="small-btn btn-light"
                         onclick="moveDown(${ i })"
-                        ${ i === students.length - 1 ? "disabled" : "" }
+                        ${ vi === visible.length - 1 ? "disabled" : "" }
                     >
                         ↓
                     </button>
@@ -196,7 +202,8 @@ function renderStudents() {
 
                 </div>
 
-            `).join("");
+            `;
+  }).join("");
   if (typeof refreshFeeStatusCache === "function") {
     refreshFeeStatusCache();
   }

@@ -48,6 +48,15 @@
 
     <button
         class="inactive-home-btn"
+        id="awayHomeBtn"
+        onclick="openAwayPage()"
+        style="margin-top:10px;"
+    >
+        Temporarily Away
+    </button>
+
+    <button
+        class="inactive-home-btn"
         onclick="openReceiptSearchModal()"
         style="margin-top:10px;"
     >
@@ -671,6 +680,26 @@
                 </div>
 
 
+                <!-- FREE STUDENT -->
+
+                <div class="student-profile-info-row" id="pageStudentFeeFreeRow">
+
+                    <div class="student-profile-info-label">
+                        Free Student (कोई Fee नहीं)
+                    </div>
+
+
+                    <div class="student-profile-info-value">
+                        <input
+                            type="checkbox"
+                            id="pageStudentFeeFree"
+                            onchange="toggleFeeFree()"
+                        >
+                    </div>
+
+                </div>
+
+
                 <!-- BATCH -->
 
                 <div class="student-profile-info-row" id="pageStudentBatchRow">
@@ -829,6 +858,48 @@
                     Send to Inactive
                 </button>
 
+
+                <button
+                    class="btn-light"
+                    id="awayMarkBtn"
+                    onclick="sendStudentToAway()"
+                >
+                    Temporarily Away करें
+                </button>
+
+
+            </div>
+
+
+            <!-- AWAY BANNER + ACTIONS (only when the student is Away) -->
+
+            <div
+                class="expelled-banner"
+                id="awayBanner"
+                style="display:none;"
+            >
+                यह Student अभी Temporarily Away है — Fee Record सामान्य रूप से चल रहा है, बस List और Attendance से हटा है (Attendance में यह अपने आप Absent गिनेगा)।
+            </div>
+
+            <div
+                class="family-actions"
+                id="awayActionsRow"
+                style="display:none;"
+            >
+
+                <button
+                    class="btn-main"
+                    onclick="returnStudentFromAway()"
+                >
+                    वापस आ गया — Active करें
+                </button>
+
+                <button
+                    class="btn-danger"
+                    onclick="sendStudentToInactive()"
+                >
+                    नहीं आया — Inactive करें
+                </button>
 
             </div>
 
@@ -992,6 +1063,46 @@
 
         <div
             id="inactiveStudentList"
+            class="inactive-student-list"
+        ></div>
+
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     TEMPORARILY AWAY PAGE
+===================================================== -->
+
+<div id="awayStudentsPage">
+
+
+    <div class="student-profile-topbar">
+
+
+        <button
+            class="student-profile-back"
+            onclick="closeAwayPage()"
+        >
+            ← Back
+        </button>
+
+
+        <div class="student-profile-heading">
+            Temporarily Away
+        </div>
+
+
+    </div>
+
+
+    <div class="inactive-page-wrap">
+
+
+        <div
+            id="awayStudentList"
             class="inactive-student-list"
         ></div>
 

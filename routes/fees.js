@@ -692,6 +692,13 @@ router.get("/monthly-list", async (req, res) => {
 
     const ownersMap = new Map();
     allStudents.forEach(s => {
+      // Solo Free students have no fee to collect at all — skip them
+      // entirely from the collection list. (A Free child inside a
+      // Family still shows, since the family unit may still owe for
+      // its other members.)
+      if (!s.familyCode && s.feeFree) {
+        return;
+      }
       const ownerType = s.familyCode ? "family" : "student";
       const ownerKey = s.familyCode || s.id;
       if (!ownersMap.has(ownerKey)) {

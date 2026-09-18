@@ -132,6 +132,7 @@ let currentBatch = null;
 let profileBatchIndex = null;
 let profileStudentIndex = null;
 let profileInactiveIndex = null;
+let profileCameFromAway = false;
 /* =====================================================
    CREATE STUDENT
 ===================================================== */
@@ -142,7 +143,10 @@ function createStudent(name) {
     familyCode: "",
     active: true,
     admissionDate: (typeof FeeUtils !== "undefined" ? FeeUtils.todayISO() : ""),
-    feeHistoryKeys: []
+    feeHistoryKeys: [],
+    away: false,
+    awaySince: "",
+    feeFree: false
   };
 }
 /* =====================================================
@@ -190,6 +194,15 @@ function normalizeStudent(student) {
   }
   if (!Array.isArray(student.feeHistoryKeys)) {
     student.feeHistoryKeys = [];
+  }
+  if (typeof student.away !== "boolean") {
+    student.away = false;
+  }
+  if (typeof student.awaySince !== "string") {
+    student.awaySince = "";
+  }
+  if (typeof student.feeFree !== "boolean") {
+    student.feeFree = false;
   }
   return student;
 }

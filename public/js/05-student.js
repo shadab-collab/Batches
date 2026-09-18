@@ -36,10 +36,11 @@ function moveDown(index) {
 /* =====================================================
    OPEN STUDENT PROFILE
 ===================================================== */
-function openStudentProfile(bi, si) {
+function openStudentProfile(bi, si, fromAway) {
   profileBatchIndex = bi;
   profileStudentIndex = si;
   profileInactiveIndex = null;
+  profileCameFromAway = !!fromAway;
   const batch = batches[bi];
   const student = batch.students[si];
   if (!student) {
@@ -48,6 +49,7 @@ function openStudentProfile(bi, si) {
   document.getElementById("pageStudentName").textContent = student.name;
   document.getElementById("pageStudentIdentity").textContent = student.identity || "";
   document.getElementById("pageStudentAdmissionDate").value = student.admissionDate || "";
+  document.getElementById("pageStudentFeeFree").checked = !!student.feeFree;
   document.getElementById("pageStudentBatch").textContent = batch.name;
   document.getElementById("pageStudentTime").textContent = formatTime(batch.time);
   document.getElementById("pageStudentPosition").textContent = si + 1;
@@ -57,6 +59,9 @@ function openStudentProfile(bi, si) {
   document.getElementById("familyActions").style.display = "";
   document.getElementById("expelledBanner").style.display = "none";
   document.getElementById("expellActionRow").style.display = "none";
+  document.getElementById("awayBanner").style.display = student.away ? "" : "none";
+  document.getElementById("awayActionsRow").style.display = student.away ? "" : "none";
+  document.getElementById("awayMarkBtn").style.display = student.away ? "none" : "";
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
@@ -70,6 +75,10 @@ function openStudentProfile(bi, si) {
     inactiveButton.style.display = "none";
   }
   document.getElementById("inactiveStudentsPage").style.display = "none";
+  const awayPageEl = document.getElementById("awayStudentsPage");
+  if (awayPageEl) {
+    awayPageEl.style.display = "none";
+  }
   document.getElementById("studentProfilePage").style.display = "block";
   window.scrollTo(0, 0);
 }
@@ -126,6 +135,22 @@ function editListCodeName() {
   }
   student.listCodeName = value.trim();
   saveData();
+}
+/* =====================================================
+   TOGGLE FREE STUDENT
+   कोई Fee track नहीं होगा — profile पर सिर्फ एक Badge दिखेगा,
+   और यह Solo हो तो Monthly Collection List से भी बाहर रहेगा।
+   Fee Profile/Cycle का डेटा कहीं delete नहीं होता, बस दिखाना
+   बंद हो जाता है — flag हटाते ही सब वापस पहले जैसा दिखेगा।
+===================================================== */
+function toggleFeeFree() {
+  const student = getCurrentProfileStudent();
+  if (!student) {
+    return;
+  }
+  student.feeFree = document.getElementById("pageStudentFeeFree").checked;
+  saveData();
+  loadFeeCard(student);
 }
 /* =====================================================
    EDIT ADMISSION DATE

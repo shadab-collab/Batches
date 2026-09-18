@@ -30,6 +30,12 @@ async function loadFeeCard(student) {
   if (!body) {
     return;
   }
+
+  if (student.feeFree) {
+    body.innerHTML = `<div class="empty">🆓 यह Student Free में पढ़ रहा है — कोई Fee Track नहीं हो रहा।</div>`;
+    loadFeeHistorySharedSection(student, owner);
+    return;
+  }
   body.innerHTML = `<div class="empty">लोड हो रहा है...</div>`;
 
   try {

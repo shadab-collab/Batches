@@ -8,6 +8,7 @@ let attendanceBatchIndex = null;
 // changes this in memory; nothing is saved until "Submit" is pressed.
 let attendancePendingAbsent = new Set();
 let attendanceDayStudentIds = [];
+let attendanceAwayIds = new Set();
 
 function openAttendancePage() {
   const cameFromBatchModal = currentBatch !== null;
@@ -93,17 +94,19 @@ async function loadAttendanceDay() {
     return;
   }
 
-  const students = batch.students;
-  if (!students.length) {
+  const students = batch.students.filter(s => !s.away);
+  const awayStudents = batch.students.filter(s => s.away);
+  if (!students.length && !awayStudents.length) {
     body.innerHTML = `<div class="empty">इस Batch में कोई Active Student नहीं है।</div>`;
     return;
   }
 
   try {
+    const allIds = batch.students.map(s => s.id);
     const res = await fetch("/api/attendance/day", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, studentIds: students.map(s => s.id) })
+      body: JSON.stringify({ date, studentIds: allIds })
     });
     const data = await res.json();
     if (!data.success) {
@@ -113,18 +116,24 @@ async function loadAttendanceDay() {
 
     // Fresh working copy for this batch+date — every tap below only
     // touches this set; the server isn't touched again until Submit.
-    attendanceDayStudentIds = students.map(s => s.id);
+    // Away students are force-included as Absent, always — they
+    // aren't toggleable, so they get written Absent every time this
+    // day's attendance is submitted.
+    attendanceDayStudentIds = allIds;
+    attendanceAwayIds = new Set(awayStudents.map(s => s.id));
     attendancePendingAbsent = new Set(data.absentStudentIds);
+    attendanceAwayIds.forEach(id => attendancePendingAbsent.add(id));
 
-    renderAttendanceRows(students);
+    renderAttendanceRows(students, awayStudents);
   } catch (error) {
     body.innerHTML = `<div class="empty">Load नहीं हो सका। इंटरनेट चेक करें।</div>`;
   }
 }
 
 /* Redraws the student list from attendancePendingAbsent — pure UI,
-   no network call. Called after every tap and after a submit. */
-function renderAttendanceRows(students) {
+   no network call. Called after every tap and after a submit.
+   Away students render as a fixed, non-toggleable "Auto Absent" row. */
+function renderAttendanceRows(students, awayStudents) {
   const body = document.getElementById("attendanceDayBody");
   const rows = students.map(s => {
     const isAbsent = attendancePendingAbsent.has(s.id);
@@ -138,8 +147,16 @@ function renderAttendanceRows(students) {
             `;
   }).join("");
 
+  const awayRows = (awayStudents || []).map(s => `
+                <div class="dashboard-row" style="opacity:0.6;">
+                    <span>${ escapeHtml(s.name) } <span class="student-identity">(Away)</span></span>
+                    <button class="small-btn btn-danger" disabled>Absent (Auto)</button>
+                </div>
+            `).join("");
+
   body.innerHTML = `
         ${ rows }
+        ${ awayRows }
         <button class="btn-main" style="width:100%;margin-top:14px;padding:12px;font-size:15px;" onclick="submitAttendanceDay()">
             ✔ Submit — पूरे Batch की Attendance एक साथ Save करें
         </button>
@@ -147,8 +164,12 @@ function renderAttendanceRows(students) {
 }
 
 /* Just flips the in-memory mark for one student and redraws —
-   no server round-trip, so tapping through a whole batch is instant. */
+   no server round-trip, so tapping through a whole batch is instant.
+   Away students can't be toggled — they're always Absent. */
 function toggleAttendanceLocal(studentId) {
+  if (attendanceAwayIds.has(studentId)) {
+    return;
+  }
   if (attendancePendingAbsent.has(studentId)) {
     attendancePendingAbsent.delete(studentId);
   } else {
@@ -156,7 +177,7 @@ function toggleAttendanceLocal(studentId) {
   }
   const batch = batches[attendanceBatchIndex];
   if (batch) {
-    renderAttendanceRows(batch.students);
+    renderAttendanceRows(batch.students.filter(s => !s.away), batch.students.filter(s => s.away));
   }
 }
 

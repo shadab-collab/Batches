@@ -27,6 +27,22 @@ const studentSchema = new mongoose.Schema({
     type: [mongoose.Schema.Types.Mixed],
     default: []
   },
+  // Temporarily Away — student is neither attending nor formally
+  // left. Stays in the batch's headcount and Fee record runs as
+  // normal; only hidden from the working list and daily Attendance.
+  away: {
+    type: Boolean,
+    default: false
+  },
+  awaySince: {
+    type: String,
+    default: ""
+  },
+  // Free student — no Fee is tracked/collected for them at all.
+  feeFree: {
+    type: Boolean,
+    default: false
+  },
   active: {
     type: Boolean,
     default: true

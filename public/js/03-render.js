@@ -11,7 +11,15 @@ function render() {
     const box = document.createElement("div");
     box.className = "batch";
     box.onclick = () => openBatch(index);
-    let students = batch.students.map((student, i) => `
+    let visibleSerial = 0;
+    let students = batch.students
+      .map((student, i) => ({ student, i }))
+      .filter(entry => !entry.student.away)
+      .map(entry => {
+        const student = entry.student;
+        const i = entry.i;
+        visibleSerial++;
+        return `
 
                             <div
                                 class="student"
@@ -20,7 +28,7 @@ function render() {
                                 <span
                                     class="serial"
                                 >
-                                    ${ i + 1 }.
+                                    ${ visibleSerial }.
                                 </span>
 
                                 <button
@@ -41,7 +49,8 @@ function render() {
 
                             </div>
 
-                        `).join("");
+                        `;
+      }).join("");
     if (!students) {
       students = `<div class="empty">
                         कोई Student नहीं
@@ -78,6 +87,7 @@ function render() {
     grid.appendChild(box);
   });
   updateInactiveButton();
+  updateAwayButton();
   if (typeof refreshFeeStatusCache === "function") {
     refreshFeeStatusCache();
   }
@@ -95,4 +105,15 @@ function updateInactiveButton() {
   } else {
     button.textContent = "Inactive Students";
   }
+}
+/* =====================================================
+   AWAY BUTTON
+===================================================== */
+function updateAwayButton() {
+  const button = document.getElementById("awayHomeBtn");
+  if (!button) {
+    return;
+  }
+  const count = batches.reduce((sum, b) => sum + b.students.filter(s => s.away).length, 0);
+  button.textContent = count ? `Temporarily Away (${ count })` : "Temporarily Away";
 }

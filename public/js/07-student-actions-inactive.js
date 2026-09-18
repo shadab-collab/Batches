@@ -18,6 +18,8 @@ function sendStudentToInactive() {
     */
   student.active = false;
   student.inactiveSince = FeeUtils.todayISO();
+  student.away = false;
+  student.awaySince = "";
   inactiveStudents.push(student);
   batches[profileBatchIndex].students.splice(profileStudentIndex, 1);
   saveData();
@@ -31,13 +33,20 @@ function closeStudentProfilePage() {
   document.getElementById("studentProfilePage").style.display = "none";
 
   const cameFromInactive = profileInactiveIndex !== null;
+  const cameFromAway = profileCameFromAway;
 
   profileBatchIndex = null;
   profileStudentIndex = null;
   profileInactiveIndex = null;
+  profileCameFromAway = false;
 
   if (cameFromInactive) {
     openInactivePage();
+    return;
+  }
+
+  if (cameFromAway) {
+    openAwayPage();
     return;
   }
 
@@ -94,6 +103,10 @@ function openInactivePage() {
   const inactiveWrap = document.querySelector(".inactive-home-wrap");
   if (inactiveWrap) {
     inactiveWrap.style.display = "none";
+  }
+  const awayPageEl = document.getElementById("awayStudentsPage");
+  if (awayPageEl) {
+    awayPageEl.style.display = "none";
   }
   document.getElementById("inactiveStudentsPage").style.display = "block";
   renderInactiveStudents();
@@ -190,14 +203,18 @@ function openInactiveStudentProfile(index) {
   profileBatchIndex = null;
   profileStudentIndex = null;
   profileInactiveIndex = index;
+  profileCameFromAway = false;
 
   document.getElementById("pageStudentName").textContent = student.name;
   document.getElementById("pageStudentIdentity").textContent = student.identity || "";
   document.getElementById("pageStudentAdmissionDate").value = student.admissionDate || "";
+  document.getElementById("pageStudentFeeFree").checked = !!student.feeFree;
   document.getElementById("pageStudentBatchRow").style.display = "none";
   document.getElementById("pageStudentTimeRow").style.display = "none";
   document.getElementById("pageStudentPositionRow").style.display = "none";
   document.getElementById("familyActions").style.display = "none";
+  document.getElementById("awayBanner").style.display = "none";
+  document.getElementById("awayActionsRow").style.display = "none";
   document.getElementById("expellActionRow").style.display = "";
   document.getElementById("expelledBanner").style.display = student.expelled ? "" : "none";
 
@@ -243,4 +260,140 @@ function expellStudent() {
   student.expelled = true;
   saveData();
   closeStudentProfilePage();
+}
+/* =====================================================
+   SEND STUDENT TO TEMPORARY AWAY
+   Student stays exactly where it is in batches[].students —
+   still counted in the Batch's total headcount and its Fee
+   record keeps running normally. Only the Batch's working
+   list and the daily Attendance screen stop showing them
+   (their Attendance auto-marks Absent instead, every day the
+   batch's attendance gets submitted).
+===================================================== */
+function sendStudentToAway() {
+  if (profileBatchIndex === null || profileStudentIndex === null) {
+    return;
+  }
+  const student = batches[profileBatchIndex].students[profileStudentIndex];
+  if (!student) {
+    return;
+  }
+  const ok = confirm(`${ student.name } को Temporarily Away करना है?\n\nFee/Family Record जस का तस चलता रहेगा, बस List और Attendance से हट जाएगा।`);
+  if (!ok) {
+    return;
+  }
+  student.away = true;
+  student.awaySince = FeeUtils.todayISO();
+  saveData();
+  openStudentProfile(profileBatchIndex, profileStudentIndex);
+  render();
+}
+/* =====================================================
+   RETURN STUDENT FROM AWAY TO ACTIVE
+===================================================== */
+function returnStudentFromAway() {
+  if (profileBatchIndex === null || profileStudentIndex === null) {
+    return;
+  }
+  const student = batches[profileBatchIndex].students[profileStudentIndex];
+  if (!student) {
+    return;
+  }
+  student.away = false;
+  student.awaySince = "";
+  saveData();
+  openStudentProfile(profileBatchIndex, profileStudentIndex);
+  render();
+}
+/* =====================================================
+   AWAY STUDENTS — COMBINED LIST
+   Away students never leave their batch's students array (so
+   the batch's headcount still counts them) — this scans every
+   batch fresh each time, purely for a convenient combined view.
+===================================================== */
+function getAwayEntries() {
+  const entries = [];
+  batches.forEach((batch, batchIndex) => {
+    batch.students.forEach((student, studentIndex) => {
+      if (student.away) {
+        entries.push({ batch, batchIndex, studentIndex, student });
+      }
+    });
+  });
+  return entries;
+}
+/* =====================================================
+   AWAY PAGE
+===================================================== */
+function openAwayPage() {
+  document.getElementById("studentProfilePage").style.display = "none";
+  document.getElementById("overlay").style.display = "none";
+  document.getElementById("profileOverlay").style.display = "none";
+  document.querySelector(".header").style.display = "none";
+  document.getElementById("batchGrid").style.display = "none";
+  const inactiveWrap = document.querySelector(".inactive-home-wrap");
+  if (inactiveWrap) {
+    inactiveWrap.style.display = "none";
+  }
+  document.getElementById("inactiveStudentsPage").style.display = "none";
+  document.getElementById("awayStudentsPage").style.display = "block";
+  renderAwayStudents();
+  window.scrollTo(0, 0);
+}
+/* =====================================================
+   CLOSE AWAY PAGE
+===================================================== */
+function closeAwayPage() {
+  document.getElementById("awayStudentsPage").style.display = "none";
+  document.querySelector(".header").style.display = "";
+  document.getElementById("batchGrid").style.display = "";
+  const inactiveWrap = document.querySelector(".inactive-home-wrap");
+  if (inactiveWrap) {
+    inactiveWrap.style.display = "";
+  }
+  render();
+  window.scrollTo(0, 0);
+}
+/* =====================================================
+   RENDER AWAY STUDENTS
+===================================================== */
+function renderAwayStudents() {
+  const list = document.getElementById("awayStudentList");
+  if (!list) {
+    return;
+  }
+  const entries = getAwayEntries();
+  if (!entries.length) {
+    list.innerHTML = `
+            <div class="empty">
+                कोई Student Temporarily Away नहीं है।
+            </div>
+        `;
+    return;
+  }
+  list.innerHTML = entries.map((entry, position) => {
+    const student = entry.student;
+    const familyText = student.familyCode ? `Family: ${ escapeHtml(student.familyCode) }` : "Solo";
+    const sinceText = student.awaySince ? ` · ${ FeeUtils.formatDDMM(student.awaySince) } से` : "";
+    return `
+
+                        <div
+                            class="inactive-student-card"
+                            onclick="openStudentProfile(${ entry.batchIndex }, ${ entry.studentIndex }, true)"
+                            style="cursor:pointer;"
+                        >
+
+                            <div class="inactive-student-number">
+                                ${ position + 1 }.
+                            </div>
+
+                            <div class="inactive-student-info">
+                                <strong>${ escapeHtml(student.name) }</strong>
+                                <span>${ escapeHtml(entry.batch.name) } · ${ familyText }${ sinceText }</span>
+                            </div>
+
+                        </div>
+
+                    `;
+  }).join("");
 }
