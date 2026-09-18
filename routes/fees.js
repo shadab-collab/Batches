@@ -165,14 +165,21 @@ router.get("/:ownerType/:ownerKey", async (req, res) => {
 
 /* =====================================================
    SET / UPDATE FEE PROFILE  /api/fees/:ownerType/:ownerKey/profile
-   Body: { feeMode, amount, memberFees, dueDateType, joiningDate }
-   A change always takes effect from the NEXT due cycle onward —
-   the current and all past cycles keep whatever amount they were
-   already locked to.
+   Body: { feeMode, amount, memberFees, dueDateType, joiningDate,
+           applyFrom: "next" (default) | "current" }
+   "next"    — old behaviour: current/past cycles keep their old
+               amount, only cycles from next month onward change.
+   "current" — the change applies from THIS running cycle onward;
+               if that cycle's FeeCycle row already exists (locked
+               at the old amount), it is refreshed to the new
+               amount too. Meant for family membership changes
+               (a member leaving/joining mid-cycle) where the
+               owner needs the CURRENT cycle's total corrected,
+               not just future ones.
 ===================================================== */
 router.post("/:ownerType/:ownerKey/profile", async (req, res) => {
   const { ownerType, ownerKey } = req.params;
-  const { feeMode, amount, memberFees, dueDateType, joiningDate, pushFirstCycle, admissionFeeAmount, admissionFeePaid } = req.body;
+  const { feeMode, amount, memberFees, dueDateType, joiningDate, pushFirstCycle, admissionFeeAmount, admissionFeePaid, applyFrom } = req.body;
 
   if (!["fixed", "individual", "total"].includes(feeMode)) {
     return res.status(400).json({ success: false, message: "Invalid feeMode" });
@@ -185,6 +192,7 @@ router.post("/:ownerType/:ownerKey/profile", async (req, res) => {
     const existing = await FeeProfile.find({ ownerType, ownerKey }).sort({ effectiveFrom: 1 });
 
     let effectiveFrom;
+    let currentCycleKeyForRefresh = null;
 
     if (!existing.length) {
       if (!joiningDate) {
@@ -205,16 +213,30 @@ router.post("/:ownerType/:ownerKey/profile", async (req, res) => {
     } else {
       const active = existing.find(p => p.effectiveTo === null);
       const currentCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
-      const afterCurrent = FeeUtils.nextMonth(
-        FeeUtils.parseISODate(currentCycle.cycleKey).year,
-        FeeUtils.parseISODate(currentCycle.cycleKey).month
-      );
-      const nextCycleObj = FeeUtils.cycleForMonth(dueDateType, afterCurrent.year, afterCurrent.month);
-      effectiveFrom = nextCycleObj.cycleKey;
 
-      if (active) {
-        active.effectiveTo = currentCycle.cycleKey;
-        await FeeProfile.updateOne({ _id: active._id }, { $set: { effectiveTo: currentCycle.cycleKey } });
+      if (applyFrom === "current") {
+        // इसी चल रहे cycle से नया amount लागू — पिछला profile उससे
+        // पिछली cycle तक ही सीमित रह जाता है।
+        effectiveFrom = currentCycle.cycleKey;
+        currentCycleKeyForRefresh = currentCycle.cycleKey;
+        const prev = FeeUtils.prevMonth(
+          FeeUtils.parseISODate(currentCycle.cycleKey).year,
+          FeeUtils.parseISODate(currentCycle.cycleKey).month
+        );
+        const prevCycleKey = FeeUtils.cycleForMonth(dueDateType, prev.year, prev.month).cycleKey;
+        if (active) {
+          await FeeProfile.updateOne({ _id: active._id }, { $set: { effectiveTo: prevCycleKey } });
+        }
+      } else {
+        const afterCurrent = FeeUtils.nextMonth(
+          FeeUtils.parseISODate(currentCycle.cycleKey).year,
+          FeeUtils.parseISODate(currentCycle.cycleKey).month
+        );
+        const nextCycleObj = FeeUtils.cycleForMonth(dueDateType, afterCurrent.year, afterCurrent.month);
+        effectiveFrom = nextCycleObj.cycleKey;
+        if (active) {
+          await FeeProfile.updateOne({ _id: active._id }, { $set: { effectiveTo: currentCycle.cycleKey } });
+        }
       }
     }
 
@@ -231,6 +253,16 @@ router.post("/:ownerType/:ownerKey/profile", async (req, res) => {
       effectiveFrom,
       effectiveTo: null
     });
+
+    // "current" चुना गया था और उस cycle का FeeCycle row पहले से बन चुका था
+    // (पुराने amount पर locked) — तो उसे भी नए amount पर refresh करें, वरना
+    // change इसी चल रहे cycle में दिखेगा ही नहीं।
+    if (currentCycleKeyForRefresh) {
+      await FeeCycle.updateOne(
+        { ownerType, ownerKey, cycleKey: currentCycleKeyForRefresh },
+        { $set: { amountDue: amountForProfile(created) } }
+      );
+    }
 
     res.json({ success: true, profile: created });
 

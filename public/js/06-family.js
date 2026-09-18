@@ -1,4 +1,23 @@
 /* =====================================================
+   RECORD FEE HISTORY KEY
+   Called every time a student's billing identity (ownerKey)
+   is about to change — solo id <-> family code. Keeps a
+   permanent list on the student so their fee history under
+   an old key is never lost, just relabelled "पुराना/Shared".
+===================================================== */
+function recordFeeHistoryKey(student, ownerType, ownerKey) {
+  if (!ownerKey) {
+    return;
+  }
+  if (!Array.isArray(student.feeHistoryKeys)) {
+    student.feeHistoryKeys = [];
+  }
+  const already = student.feeHistoryKeys.some(k => k.ownerType === ownerType && k.ownerKey === ownerKey);
+  if (!already) {
+    student.feeHistoryKeys.push({ ownerType, ownerKey });
+  }
+}
+/* =====================================================
    FAMILY PROFILE
 ===================================================== */
 function updateFamilyProfile(student) {
@@ -191,6 +210,8 @@ async function addStudentToFamily() {
   }
 
   student.familyCode = familyCode;
+  recordFeeHistoryKey(student, "student", student.id);
+  recordFeeHistoryKey(student, "family", familyCode);
   saveData();
   updateFamilyProfile(student);
   render();
@@ -218,6 +239,7 @@ function removeStudentFromFamily() {
        सिर्फ Family Code हटेगा।
        बच्चा Active रहेगा।
     */
+  recordFeeHistoryKey(student, "family", student.familyCode);
   student.familyCode = "";
   saveData();
   updateFamilyProfile(student);

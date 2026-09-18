@@ -53,6 +53,77 @@ async function loadFeeCard(student) {
   } catch (error) {
     body.innerHTML = `<div class="empty">Fee data load नहीं हुआ।</div>`;
   }
+
+  loadFeeHistorySharedSection(student, owner);
+}
+
+/* =====================================================
+   SHARED / OLD FEE HISTORY
+   Shows every owner key (an old solo id, or a family code)
+   this student was ever billed under BESIDES their current
+   one — read-only, clearly tagged, so switching in/out of a
+   family never makes older fee history look "lost".
+===================================================== */
+async function loadFeeHistorySharedSection(student, currentOwner) {
+  const wrap = document.getElementById("feeHistorySharedBody");
+  if (!wrap) {
+    return;
+  }
+  wrap.innerHTML = "";
+
+  const historyKeys = (student.feeHistoryKeys || []).filter(k =>
+    !(k.ownerType === currentOwner.ownerType && k.ownerKey === currentOwner.ownerKey)
+  );
+  if (!historyKeys.length) {
+    return;
+  }
+
+  const blocks = [];
+  for (const key of historyKeys) {
+    try {
+      const res = await fetch(`/api/fees/${ key.ownerType }/${ key.ownerKey }`);
+      const data = await res.json();
+      if (!data.success || !data.hasProfile) {
+        continue;
+      }
+
+      const totalRecorded = data.payments.reduce((sum, p) => sum + p.amount, 0);
+      const tagLabel = key.ownerType === "family"
+        ? `🔗 पुराना/Shared Family Record (Code: ${ escapeHtml(key.ownerKey) })`
+        : `🔗 पुराना Individual Record`;
+
+      const cycleRows = data.cycles.slice().reverse().map(c => `
+                <div class="fee-row">
+                    <div class="fee-row-main">
+                        <span>${ FeeUtils.formatCycleRange(c) }</span>
+                        <span class="fee-status fee-status-${ c.status.toLowerCase().replace(/[\s/]+/g, "-") }">${ c.status }</span>
+                    </div>
+                    <div class="fee-row-sub">
+                        Due ₹${ c.amountDue } · Paid ₹${ c.paidSum }${ c.charitySum > 0 ? ` · Charity ₹${ c.charitySum }` : "" } · Remaining ₹${ c.remaining }
+                    </div>
+                </div>
+            `).join("");
+
+      blocks.push(`
+                <div class="student-profile-section-body fee-history-shared-block" style="margin-top:14px;border-top:2px dashed #ccc;padding-top:14px;">
+                    <div style="font-weight:600;margin-bottom:8px;">${ tagLabel }</div>
+                    <div style="font-size:13px;color:#666;margin-bottom:8px;">
+                        कुल दर्ज राशि: ₹${ totalRecorded } — यह सिर्फ देखने के लिए है; नया Payment यहां से दर्ज नहीं होगा, वो हमेशा ऊपर मौजूदा Fee Card में ही दर्ज करें।
+                    </div>
+                    ${ cycleRows }
+                </div>
+            `);
+    } catch (error) {
+      // एक पुराना record लोड न हो पाए तो बाकी profile पर असर नहीं पड़ना चाहिए
+    }
+  }
+
+  if (blocks.length) {
+    wrap.innerHTML = `
+            <div class="student-profile-section-title" style="margin-top:18px;">पुराने / Shared Fee Records</div>
+            ${ blocks.join("") }
+        `;
+  }
 }
 
 function renderFeeCard(data) {
@@ -316,9 +387,22 @@ function openFeeSetupModal() {
         </div>
         ` : "" }
 
-        <div class="empty" style="margin-top:8px;">
-            बदलाव अगली Fee Cycle से लागू होगा। मौजूदा/पुरानी Cycle की Amount नहीं बदलेगी।
+        ${ hasProfile ? `
+        <div class="field">
+            <label>नया Amount कब से लागू हो?</label>
+            <select id="feeApplyFromSelect">
+                <option value="next">अगले Cycle से (मौजूदा Cycle नहीं बदलेगी) — सामान्य तरीका</option>
+                <option value="current">इसी चल रहे Cycle से (मौजूदा Cycle का Amount भी अभी अपडेट होगा)</option>
+            </select>
+            <div class="empty" style="text-align:left;padding:4px 0;">
+                किसी Family में सदस्य कटने/जुड़ने पर सही Cycle में सही Amount के लिए यहां से चुनें।
+            </div>
         </div>
+        ` : `
+        <div class="empty" style="margin-top:8px;">
+            पहली Fee ऊपर दी गई Joining Date के हिसाब से तय Cycle से लागू होगी।
+        </div>
+        ` }
     `;
 
   modal.style.display = "flex";
@@ -395,6 +479,11 @@ async function saveFeeProfile() {
     body.pushFirstCycle = document.getElementById("feePushFirstCycle").checked;
     body.admissionFeeAmount = Number(document.getElementById("feeAdmissionAmountInput").value) || 0;
     body.admissionFeePaid = document.getElementById("feeAdmissionPaidInput").checked;
+  }
+
+  const applyFromSelect = document.getElementById("feeApplyFromSelect");
+  if (applyFromSelect) {
+    body.applyFrom = applyFromSelect.value;
   }
 
   try {

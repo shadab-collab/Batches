@@ -141,7 +141,8 @@ function createStudent(name) {
     name: String(name),
     familyCode: "",
     active: true,
-    admissionDate: (typeof FeeUtils !== "undefined" ? FeeUtils.todayISO() : "")
+    admissionDate: (typeof FeeUtils !== "undefined" ? FeeUtils.todayISO() : ""),
+    feeHistoryKeys: []
   };
 }
 /* =====================================================
@@ -183,6 +184,12 @@ function normalizeStudent(student) {
   }
   if (typeof student.batchId !== "string") {
     student.batchId = "";
+  }
+  if (typeof student.admissionDate !== "string") {
+    student.admissionDate = "";
+  }
+  if (!Array.isArray(student.feeHistoryKeys)) {
+    student.feeHistoryKeys = [];
   }
   return student;
 }

@@ -19,6 +19,14 @@ const studentSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  // Every {ownerType, ownerKey} the student has ever been billed under —
+  // their own solo id, and every family code they've ever been part of.
+  // Nothing is ever removed from this list, so old fee history always
+  // stays reachable even after family membership changes.
+  feeHistoryKeys: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
+  },
   active: {
     type: Boolean,
     default: true
