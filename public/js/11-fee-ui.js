@@ -11,6 +11,12 @@ function getFeeOwner(student) {
 let currentFeeOwner = null;
 let currentFeeData = null;
 let currentFeeStudent = null;
+// Set only while the Payment modal is open for an OLD/shared owner key
+// (see openPaymentModalForOwner) — never touched for the normal, current
+// fee card flow, and always cleared on modal close so it can't leak into
+// a later payment meant for the real current owner.
+let paymentModalOwnerOverride = null;
+let paymentModalDataOverride = null;
 
 /* =====================================================
    LOAD + RENDER FEE CARD
@@ -101,6 +107,7 @@ async function loadFeeHistorySharedSection(student, currentOwner) {
                     <div class="fee-row-sub">
                         Due ₹${ c.amountDue } · Paid ₹${ c.paidSum }${ c.charitySum > 0 ? ` · Charity ₹${ c.charitySum }` : "" } · Remaining ₹${ c.remaining }
                     </div>
+                    ${ c.lastDate ? `<div class="fee-row-sub">${ FeeUtils.formatDDMM(c.lastDate) }</div>` : "" }
                 </div>
             `).join("");
 
@@ -108,8 +115,9 @@ async function loadFeeHistorySharedSection(student, currentOwner) {
                 <div class="student-profile-section-body fee-history-shared-block" style="margin-top:14px;border-top:2px dashed #ccc;padding-top:14px;">
                     <div style="font-weight:600;margin-bottom:8px;">${ tagLabel }</div>
                     <div style="font-size:13px;color:#666;margin-bottom:8px;">
-                        कुल दर्ज राशि: ₹${ totalRecorded } — यह सिर्फ देखने के लिए है; नया Payment यहां से दर्ज नहीं होगा, वो हमेशा ऊपर मौजूदा Fee Card में ही दर्ज करें।
+                        कुल दर्ज राशि: ₹${ totalRecorded }
                     </div>
+                    ${ data.totalDue > 0 ? `<button class="btn-light small-btn" style="margin-bottom:10px;" onclick="openPaymentModalForOwner('${ key.ownerType }', '${ key.ownerKey }')">इस पुराने Record में Payment दर्ज करें</button>` : "" }
                     ${ cycleRows }
                 </div>
             `);
@@ -509,8 +517,9 @@ async function saveFeeProfile() {
    PAYMENT MODAL
 ===================================================== */
 function openPaymentModal() {
-  const owner = currentFeeOwner;
-  const dueCycles = (currentFeeData.cycles || []).filter(c => c.remaining > 0);
+  const owner = paymentModalOwnerOverride || currentFeeOwner;
+  const data = paymentModalDataOverride || currentFeeData;
+  const dueCycles = (data.cycles || []).filter(c => c.remaining > 0);
 
   const modal = document.getElementById("feeOverlay");
   document.getElementById("feeModalTitle").textContent = "Payment दर्ज करें";
@@ -525,11 +534,12 @@ function openPaymentModal() {
     : `<div class="empty">कोई बकाया Cycle नहीं है।</div>`;
 
   // Advance payment for the NEXT cycle (not due yet) — e.g. parent wants to
-  // pay early, before this cycle has even started
+  // pay early, before this cycle has even started. Only offered on the
+  // current owner — an old/closed owner key never gets a fresh cycle.
   let advanceRowHtml = "";
-  const cycles = currentFeeData.cycles || [];
-  if (cycles.length && currentFeeData.activeProfile) {
-    const dueDateType = currentFeeData.activeProfile.dueDateType;
+  const cycles = data.cycles || [];
+  if (!paymentModalOwnerOverride && cycles.length && data.activeProfile) {
+    const dueDateType = data.activeProfile.dueDateType;
     const latestCycle = cycles[cycles.length - 1];
     const after = FeeUtils.nextMonth(
       FeeUtils.parseISODate(latestCycle.cycleKey).year,
@@ -545,6 +555,7 @@ function openPaymentModal() {
   }
 
   document.getElementById("feeModalBody").innerHTML = `
+        ${ paymentModalOwnerOverride ? `<div class="empty" style="text-align:left;">यह एक पुराने/Shared Record में Payment दर्ज हो रही है।</div>` : "" }
         <div class="field">
             <label>किस Cycle में कितना जमा हुआ</label>
             ${ cycleRowsHtml }
@@ -565,8 +576,29 @@ function openPaymentModal() {
   modal.style.display = "flex";
 }
 
+/* Opens the same Payment modal, but scoped to a HISTORICAL owner key
+   (an old solo id, or a family the student has since left) instead of
+   the student's current one — e.g. clearing Kasif's two old unpaid
+   solo cycles months later, after he's already merged into a new
+   family and his current owner key has changed. */
+async function openPaymentModalForOwner(ownerType, ownerKey) {
+  try {
+    const res = await fetch(`/api/fees/${ ownerType }/${ ownerKey }`);
+    const data = await res.json();
+    if (!data.success || !data.hasProfile) {
+      alert("यह पुराना Record अभी लोड नहीं हो सका।");
+      return;
+    }
+    paymentModalOwnerOverride = { ownerType, ownerKey };
+    paymentModalDataOverride = data;
+    openPaymentModal();
+  } catch (error) {
+    alert("पुराना Record लोड नहीं हो सका। इंटरनेट चेक करें।");
+  }
+}
+
 async function savePayment() {
-  const owner = currentFeeOwner;
+  const owner = paymentModalOwnerOverride || currentFeeOwner;
   const inputs = document.querySelectorAll(".fee-payment-amount");
   const allocations = Array.from(inputs)
     .map(inp => ({ cycleKey: inp.dataset.cycleKey, amount: Number(inp.value) || 0 }))
@@ -604,6 +636,8 @@ async function savePayment() {
 ===================================================== */
 function closeFeeModal() {
   document.getElementById("feeOverlay").style.display = "none";
+  paymentModalOwnerOverride = null;
+  paymentModalDataOverride = null;
 }
 
 function saveFeeModal() {
