@@ -52,14 +52,29 @@ function buildReminderParts() {
   const monthCount = unpaidCycles.length;
   const monthsText = names.length === 1 ? `${ monthCount } माह` : `${ monthCount }-${ monthCount } माह`;
   const collective = FeeUtils.hindiCollectiveWord(names.length);
+  const totalAmount = unpaidCycles.reduce((sum, c) => sum + c.remaining, 0);
+  const amountText = `₹${ totalAmount }`;
 
-  return { namesText, datesText, monthsText, collective };
+  // Cycles with SOME amount already paid get called out separately, so
+  // the guardian isn't left thinking the whole month is still untouched.
+  const partialCycles = unpaidCycles.filter(c => c.paidSum > 0);
+  let partialDetailText = "";
+  if (partialCycles.length) {
+    const parts = partialCycles.map(c =>
+      `${ FeeUtils.formatHindiDateShort(c.dueDate) } वाले महीने में ₹${ c.paidSum } पहले जमा हो चुका है, ₹${ c.remaining } बाकी है`
+    );
+    partialDetailText = `इसमें से ${ parts.join("; ") }।`;
+  }
+
+  return { namesText, datesText, monthsText, collective, amountText, partialDetailText };
 }
 
 function previewReminder() {
-  const { namesText, datesText, monthsText, collective } = buildReminderParts();
+  const { namesText, datesText, monthsText, collective, amountText, partialDetailText } = buildReminderParts();
   document.getElementById("reminderPreview").textContent =
-    `${ namesText } का ${ datesText } को महीना लग गया है, इस प्रकार ${ collective } कुल ${ monthsText } का फीस बाकी है। कृपया इसे जल्द से जल्द क्लियर करने का कष्ट करें।`;
+    `${ namesText } का ${ datesText } को महीना लग गया है, इस प्रकार ${ collective } कुल ${ monthsText } का फीस बाकी है, जो मिलाकर ${ amountText } होती है।` +
+    (partialDetailText ? ` ${ partialDetailText }` : "") +
+    ` कृपया इसे जल्द से जल्द क्लियर करने का कष्ट करें।`;
 }
 
 
@@ -67,12 +82,22 @@ function previewReminder() {
    GENERATE: fill the template + capture as HD image
 ===================================================== */
 async function generateReminder() {
-  const { namesText, datesText, monthsText, collective } = buildReminderParts();
+  const { namesText, datesText, monthsText, collective, amountText, partialDetailText } = buildReminderParts();
 
   document.getElementById("rmNames").textContent = namesText;
   document.getElementById("rmDates").textContent = datesText;
   document.getElementById("rmMonths").textContent = monthsText;
   document.getElementById("rmCollective").textContent = collective;
+  document.getElementById("rmAmount").textContent = amountText;
+
+  const partialEl = document.getElementById("rmPartialDetail");
+  if (partialDetailText) {
+    partialEl.textContent = partialDetailText;
+    partialEl.style.display = "";
+  } else {
+    partialEl.textContent = "";
+    partialEl.style.display = "none";
+  }
 
   const modalBody = document.getElementById("reminderModalBody");
   modalBody.innerHTML = `<div class="receipt-search-result"><div class="empty">Image बन रही है...</div></div>`;
