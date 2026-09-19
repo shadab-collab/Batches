@@ -790,3 +790,5 @@ router.get("/monthly-list", async (req, res) => {
 
 module.exports = router;
 module.exports.getFeeStateForOwner = getFeeStateForOwner;
+module.exports.profileForCycle = profileForCycle;
+module.exports.amountForProfile = amountForProfile;

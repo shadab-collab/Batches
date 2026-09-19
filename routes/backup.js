@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 
 const { BatchData } = require("../models/BatchData");
+const { FeeProfile, FeeCycle, Payment } = require("../models/Fee");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
-const { getFeeStateForOwner } = require("./fees");
+const { profileForCycle, amountForProfile } = require("./fees");
 
 function requireMongo(req, res, next) {
   if (!isMongoReady()) {
@@ -13,6 +14,86 @@ function requireMongo(req, res, next) {
   next();
 }
 router.use(requireMongo);
+
+/* =====================================================
+   READ-ONLY FEE STATE (for Backup only)
+   Same numbers as the normal Fee card, but computed WITHOUT
+   writing anything to the database — a live Cycle row's
+   locked amount is used where one already exists, and any
+   cycle that has never been opened yet (no row created) is
+   computed on the fly from the Fee Profile instead. This
+   matters here because Backup may look at every owner in the
+   whole app in one go — writing/upserting a Cycle row for
+   every single one of those (like the normal Fee-card flow
+   does) would mean hundreds of extra database round trips and
+   make the export very slow. Reading only keeps it fast.
+===================================================== */
+async function computeReadOnlyFeeState(ownerType, ownerKey) {
+  const profiles = await FeeProfile.find({ ownerType, ownerKey }).sort({ effectiveFrom: 1 }).lean();
+  if (!profiles.length) {
+    return { hasProfile: false };
+  }
+
+  const dueDateType = profiles[0].dueDateType;
+  const joiningIso = profiles[0].joiningDate || profiles[0].effectiveFrom;
+  const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
+  const lastCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
+
+  let expectedCycles = [];
+  if (FeeUtils.compareISODate(firstCycle.cycleKey, lastCycle.cycleKey) <= 0) {
+    expectedCycles = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, lastCycle.cycleKey);
+  }
+
+  const [existingCycles, payments] = await Promise.all([
+    FeeCycle.find({ ownerType, ownerKey }).lean(),
+    Payment.find({ ownerType, ownerKey }).sort({ paymentDate: 1, createdAt: 1 }).lean()
+  ]);
+  const existingByKey = new Map(existingCycles.map(c => [c.cycleKey, c]));
+
+  const paidByCycle = {};
+  const charityByCycle = {};
+  const lastDateByCycle = {};
+  for (const p of payments) {
+    const isCharity = p.type === "charity";
+    const bucket = isCharity ? charityByCycle : paidByCycle;
+    bucket[p.cycleKey] = (bucket[p.cycleKey] || 0) + p.amount;
+    if (!lastDateByCycle[p.cycleKey] || p.paymentDate > lastDateByCycle[p.cycleKey]) {
+      lastDateByCycle[p.cycleKey] = p.paymentDate;
+    }
+  }
+
+  let totalDue = 0;
+  const cycles = expectedCycles.map(c => {
+    const existing = existingByKey.get(c.cycleKey);
+    let amountDue;
+    if (existing) {
+      amountDue = existing.amountDue;
+    } else {
+      const profile = profileForCycle(profiles, c.cycleKey);
+      amountDue = profile ? amountForProfile(profile) : 0;
+    }
+    const paidSum = paidByCycle[c.cycleKey] || 0;
+    const charitySum = charityByCycle[c.cycleKey] || 0;
+    const remaining = amountDue - paidSum - charitySum;
+    if (remaining > 0) {
+      totalDue += remaining;
+    }
+    return {
+      cycleKey: c.cycleKey,
+      dueDate: c.dueDate,
+      cycleStart: c.cycleStart,
+      cycleEnd: c.cycleEnd,
+      amountDue,
+      paidSum,
+      charitySum,
+      remaining,
+      lastDate: lastDateByCycle[c.cycleKey] || null,
+      status: FeeUtils.computeCycleStatus(amountDue, paidSum, charitySum)
+    };
+  });
+
+  return { hasProfile: true, cycles, payments, totalDue };
+}
 
 function esc(s) {
   return String(s === undefined || s === null ? "" : s).replace(/[&<>"']/g, c => ({
@@ -112,13 +193,18 @@ router.get("/export-html", async (req, res) => {
       processStudent(student, "— Inactive —", "Inactive" + since);
     });
 
-    // Fetch fee state for every owner key found, and roll up a
-    // month-wise collection summary across all of them together.
+    // Fetch fee state for every owner key found — in parallel, since
+    // these are all plain reads now — and roll up a month-wise
+    // collection summary across all of them together.
+    const ownerEntries = Array.from(owners.entries());
+    const states = await Promise.all(
+      ownerEntries.map(([, info]) => computeReadOnlyFeeState(info.ownerType, info.ownerKey))
+    );
     const feeStateByKey = new Map();
     const monthlyTotals = new Map(); // cycleKey -> {due, paid, charity}
 
-    for (const [k, info] of owners.entries()) {
-      const state = await getFeeStateForOwner(info.ownerType, info.ownerKey);
+    ownerEntries.forEach(([k], idx) => {
+      const state = states[idx];
       feeStateByKey.set(k, state);
       if (state.hasProfile) {
         state.cycles.forEach(c => {
@@ -131,7 +217,7 @@ router.get("/export-html", async (req, res) => {
           m.charity += c.charitySum;
         });
       }
-    }
+    });
 
     // ---------- Section 1: Batch-wise student/family fee detail ----------
     const batchGroups = new Map();
