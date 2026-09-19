@@ -397,3 +397,14 @@ function renderAwayStudents() {
                     `;
   }).join("");
 }
+/* =====================================================
+   BACKUP EXPORT
+   Opens a printable, well-formatted page in a new tab with
+   every Batch's Fee record + a Monthly Collection summary —
+   from there, "Print → Save as PDF" makes the actual backup
+   file, ready to upload to Drive. Freshly generated from live
+   data every time, no separate storage/upload step needed.
+===================================================== */
+function openBackupExport() {
+  window.open("/api/backup/export-html", "_blank");
+}

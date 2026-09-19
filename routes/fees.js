@@ -86,76 +86,85 @@ async function ensureCycles(ownerType, ownerKey, profiles, capDate) {
 /* =====================================================
    GET FEE STATE  /api/fees/:ownerType/:ownerKey
 ===================================================== */
+/* =====================================================
+   CORE FEE-STATE COMPUTATION FOR ONE OWNER
+   Shared by the GET route below and the Backup export
+   (routes/backup.js) — same computation, one place.
+===================================================== */
+async function getFeeStateForOwner(ownerType, ownerKey, capDate) {
+  const profiles = await FeeProfile.find({ ownerType, ownerKey })
+    .sort({ effectiveFrom: 1 })
+    .lean();
+
+  if (!profiles.length) {
+    return { success: true, hasProfile: false };
+  }
+
+  await ensureCycles(ownerType, ownerKey, profiles, capDate);
+
+  const cycles = await FeeCycle.find({ ownerType, ownerKey })
+    .sort({ cycleKey: 1 })
+    .lean();
+
+  const payments = await Payment.find({ ownerType, ownerKey })
+    .sort({ paymentDate: 1, createdAt: 1 })
+    .lean();
+
+  const paidByCycle = {};
+  const charityByCycle = {};
+  const lastDateByCycle = {};
+  for (const p of payments) {
+    const isCharity = p.type === "charity";
+    const bucket = isCharity ? charityByCycle : paidByCycle;
+    bucket[p.cycleKey] = (bucket[p.cycleKey] || 0) + p.amount;
+    // track the latest date touching this cycle, payment or charity alike
+    if (!lastDateByCycle[p.cycleKey] || p.paymentDate > lastDateByCycle[p.cycleKey]) {
+      lastDateByCycle[p.cycleKey] = p.paymentDate;
+    }
+  }
+
+  let totalDue = 0;
+  const cycleSummaries = cycles.map(c => {
+    const paidSum = paidByCycle[c.cycleKey] || 0;
+    const charitySum = charityByCycle[c.cycleKey] || 0;
+    const remaining = c.amountDue - paidSum - charitySum;
+    if (remaining > 0) {
+      totalDue += remaining;
+    }
+    return {
+      cycleKey: c.cycleKey,
+      dueDate: c.dueDate,
+      cycleStart: c.cycleStart,
+      cycleEnd: c.cycleEnd,
+      amountDue: c.amountDue,
+      paidSum,
+      charitySum,
+      remaining,
+      lastDate: lastDateByCycle[c.cycleKey] || null,
+      status: FeeUtils.computeCycleStatus(c.amountDue, paidSum, charitySum)
+    };
+  });
+
+  const activeProfile = profiles.find(p => p.effectiveTo === null) || profiles[profiles.length - 1];
+
+  return {
+    success: true,
+    hasProfile: true,
+    activeProfile,
+    profileHistory: profiles,
+    cycles: cycleSummaries,
+    payments,
+    totalDue
+  };
+}
+
 router.get("/:ownerType/:ownerKey", async (req, res) => {
   const { ownerType, ownerKey } = req.params;
   const { capDate } = req.query;
 
   try {
-    const profiles = await FeeProfile.find({ ownerType, ownerKey })
-      .sort({ effectiveFrom: 1 })
-      .lean();
-
-    if (!profiles.length) {
-      return res.json({ success: true, hasProfile: false });
-    }
-
-    await ensureCycles(ownerType, ownerKey, profiles, capDate);
-
-    const cycles = await FeeCycle.find({ ownerType, ownerKey })
-      .sort({ cycleKey: 1 })
-      .lean();
-
-    const payments = await Payment.find({ ownerType, ownerKey })
-      .sort({ paymentDate: 1, createdAt: 1 })
-      .lean();
-
-    const paidByCycle = {};
-    const charityByCycle = {};
-    const lastDateByCycle = {};
-    for (const p of payments) {
-      const isCharity = p.type === "charity";
-      const bucket = isCharity ? charityByCycle : paidByCycle;
-      bucket[p.cycleKey] = (bucket[p.cycleKey] || 0) + p.amount;
-      // track the latest date touching this cycle, payment or charity alike
-      if (!lastDateByCycle[p.cycleKey] || p.paymentDate > lastDateByCycle[p.cycleKey]) {
-        lastDateByCycle[p.cycleKey] = p.paymentDate;
-      }
-    }
-
-    let totalDue = 0;
-    const cycleSummaries = cycles.map(c => {
-      const paidSum = paidByCycle[c.cycleKey] || 0;
-      const charitySum = charityByCycle[c.cycleKey] || 0;
-      const remaining = c.amountDue - paidSum - charitySum;
-      if (remaining > 0) {
-        totalDue += remaining;
-      }
-      return {
-        cycleKey: c.cycleKey,
-        dueDate: c.dueDate,
-        cycleStart: c.cycleStart,
-        cycleEnd: c.cycleEnd,
-        amountDue: c.amountDue,
-        paidSum,
-        charitySum,
-        remaining,
-        lastDate: lastDateByCycle[c.cycleKey] || null,
-        status: FeeUtils.computeCycleStatus(c.amountDue, paidSum, charitySum)
-      };
-    });
-
-    const activeProfile = profiles.find(p => p.effectiveTo === null) || profiles[profiles.length - 1];
-
-    res.json({
-      success: true,
-      hasProfile: true,
-      activeProfile,
-      profileHistory: profiles,
-      cycles: cycleSummaries,
-      payments,
-      totalDue
-    });
-
+    const state = await getFeeStateForOwner(ownerType, ownerKey, capDate);
+    res.json(state);
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Could not load fee data" });
@@ -780,3 +789,4 @@ router.get("/monthly-list", async (req, res) => {
 
 
 module.exports = router;
+module.exports.getFeeStateForOwner = getFeeStateForOwner;
