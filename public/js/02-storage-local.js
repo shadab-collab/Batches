@@ -26,10 +26,24 @@ if (savedVersion !== DATA_VERSION) {
     }
   }
   inactiveStudents = oldInactive;
+  let oldTodos = [];
+  const todosRaw = localStorage.getItem("todosData");
+  if (todosRaw) {
+    try {
+      const parsedTodos = JSON.parse(todosRaw);
+      if (Array.isArray(parsedTodos)) {
+        oldTodos = parsedTodos;
+      }
+    } catch (error) {
+      oldTodos = [];
+    }
+  }
+  todos = oldTodos;
   normalizeAllData();
   localStorage.setItem("batchManagerDataVersion", DATA_VERSION);
   localStorage.setItem("batchManagerData", JSON.stringify(batches));
   localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
+  localStorage.setItem("todosData", JSON.stringify(todos));
 } else {
   try {
     batches = JSON.parse(localStorage.getItem("batchManagerData")) || defaultBatches;
@@ -41,6 +55,11 @@ if (savedVersion !== DATA_VERSION) {
   } catch (error) {
     inactiveStudents = [];
   }
+  try {
+    todos = JSON.parse(localStorage.getItem("todosData")) || [];
+  } catch (error) {
+    todos = [];
+  }
   normalizeAllData();
 }
 /* =====================================================
@@ -49,6 +68,7 @@ if (savedVersion !== DATA_VERSION) {
 function saveData() {
   localStorage.setItem("batchManagerData", JSON.stringify(batches));
   localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
+  localStorage.setItem("todosData", JSON.stringify(todos));
   if (window.API_MODE && typeof saveBatchesToServer === "function") {
     saveBatchesToServer();
   }

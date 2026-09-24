@@ -502,18 +502,44 @@ button{
 .inactive-home-wrap{
     padding:0 14px 20px;
     max-width:1400px;
-    margin:auto
+    margin:auto;
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:10px;
 }
 
 .inactive-home-btn{
+    position:relative;
+    aspect-ratio:1;
     width:100%;
     background:#fff;
     border:1px solid #d7d7d7;
     color:#222;
     font-weight:700;
-    padding:15px;
+    padding:6px 4px;
+    border-radius:14px;
+    font-size:11.5px;
+    line-height:1.3;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+}
+
+.home-btn-badge{
+    position:absolute;
+    top:-6px;
+    right:-6px;
+    background:#e53935;
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    min-width:20px;
+    height:20px;
+    line-height:20px;
     border-radius:10px;
-    font-size:16px
+    padding:0 5px;
+    text-align:center;
 }
 
 .inactive-home-btn:active{
@@ -532,6 +558,12 @@ button{
 }
 
 #awayStudentsPage{
+    display:none;
+    min-height:100vh;
+    background:#f3f5f8
+}
+
+#todoPage{
     display:none;
     min-height:100vh;
     background:#f3f5f8
@@ -1033,9 +1065,9 @@ button{
 }
 
 .reminder-text p{
-    font-size:50px;
-    line-height:1.55;
-    margin:0 0 40px
+    font-size:42px;
+    line-height:1.65;
+    margin:0 0 36px
 }
 
 .reminder-text p:last-child{
@@ -1453,7 +1485,6 @@ button{
     color:#555;
     border-top:1px dashed #eee
 }
-
 
 .dashboard-fee-type{
     color:#999;

@@ -109,6 +109,13 @@ const batchDataSchema = new mongoose.Schema({
   inactiveStudents: {
     type: [studentSchema],
     default: []
+  },
+  // Simple standalone To-do list — each item optionally tied to one
+  // student (by id+name, kept even if that student later changes) or
+  // marked for everyone ("all").
+  todos: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
   }
 }, { timestamps: true });
 const BatchData = mongoose.model("BatchData", batchDataSchema);

@@ -330,10 +330,17 @@ router.get("/export-html", async (req, res) => {
     .st-partial{color:#e65100;font-weight:bold;}
     .st-unpaid{color:#c62828;font-weight:bold;}
     .empty-note{font-size:12px;color:#888;font-style:italic;}
-    @media print{ body{margin:8mm;} .owner-block{border-color:#999;} }
+    .print-btn-wrap{position:sticky;top:0;background:#fff;padding:10px 0;margin-bottom:10px;border-bottom:1px solid #ddd;z-index:5;}
+    .print-btn{background:#2e7d32;color:#fff;border:none;padding:12px 20px;border-radius:8px;font-size:15px;font-weight:bold;}
+    @media print{ body{margin:8mm;} .owner-block{border-color:#999;} .no-print{display:none !important;} }
 </style>
 </head>
 <body>
+
+    <div class="print-btn-wrap no-print">
+        <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+        <div style="font-size:12px;color:#666;margin-top:6px;">इस बटन को दबाएं → खुलने वाले Print विकल्प में "Save as PDF" या "PDF" चुनें।</div>
+    </div>
 
     <h1>Batches — पूरा Backup</h1>
     <div class="generated">Generated on: ${ esc(generatedOn) } — यह Record खास कर Fee के लिए है; किसी site crash की स्थिति में इसी से manually फिर से डेटा भरा जा सकता है।</div>

@@ -128,6 +128,7 @@ const defaultBatches = [
 const DATA_VERSION = "4";
 let batches = [];
 let inactiveStudents = [];
+let todos = [];
 let currentBatch = null;
 let profileBatchIndex = null;
 let profileStudentIndex = null;
@@ -216,6 +217,23 @@ function normalizeAllData() {
   if (!Array.isArray(inactiveStudents)) {
     inactiveStudents = [];
   }
+  if (!Array.isArray(todos)) {
+    todos = [];
+  }
+  todos = todos.filter(t => t && typeof t.text === "string" && t.text.trim());
+  todos.forEach(t => {
+    if (!t.id) {
+      t.id = "T-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+    }
+    if (typeof t.done !== "boolean") {
+      t.done = false;
+    }
+    if (t.targetType !== "student") {
+      t.targetType = "all";
+      t.targetStudentId = "";
+      t.targetStudentName = "";
+    }
+  });
   batches.forEach(batch => {
     if (!Array.isArray(batch.students)) {
       batch.students = [];
