@@ -37,9 +37,37 @@ async function loadBatchesFromServer() {
   }
 }
 /* =====================================================
-   SAVE BATCHES + INACTIVE TO SERVER
+   SAVE BATCHES + INACTIVE + TODOS TO SERVER
+   Every small action (mark Away, tick a To-Do, etc.) calls this,
+   each time sending the FULL current state. If two of these ran
+   at once, whichever network response came back later could
+   overwrite the server with an older snapshot — silently undoing
+   whatever the other save had just written. To stop that, only
+   ONE save is ever in flight: a save requested while one is
+   already running is queued and re-run (with whatever the state
+   is BY THEN) right after the current one finishes, instead of
+   firing in parallel.
 ===================================================== */
-async function saveBatchesToServer() {
+let batchSaveInFlight = null;
+let batchSaveQueued = false;
+
+function saveBatchesToServer() {
+  if (batchSaveInFlight) {
+    batchSaveQueued = true;
+    return batchSaveInFlight;
+  }
+  batchSaveQueued = false;
+  batchSaveInFlight = doSaveBatchesToServer().finally(() => {
+    batchSaveInFlight = null;
+    if (batchSaveQueued) {
+      batchSaveQueued = false;
+      saveBatchesToServer();
+    }
+  });
+  return batchSaveInFlight;
+}
+
+async function doSaveBatchesToServer() {
   try {
     const response = await fetch("/api/batches", {
       method: "PUT",
@@ -72,6 +100,7 @@ async function saveBatchesToServer() {
     localStorage.setItem("batchManagerData", JSON.stringify(batches));
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
+    alert("⚠️ बदलाव Server पर Save नहीं हो सका (Internet चेक करें) — अभी सिर्फ इसी Phone में सुरक्षित है, इंटरनेट आते ही दोबारा कोई भी बदलाव करके पक्का कर लें।");
     return false;
   }
 }

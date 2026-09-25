@@ -101,11 +101,9 @@ function updateInactiveButton() {
   if (!button) {
     return;
   }
-  if (inactiveStudents.length) {
-    button.textContent = `Inactive Students (${ inactiveStudents.length })`;
-  } else {
-    button.textContent = "Inactive Students";
-  }
+  button.innerHTML = inactiveStudents.length
+    ? `Inactive<br>Students (${ inactiveStudents.length })`
+    : `Inactive<br>Students`;
 }
 /* =====================================================
    AWAY BUTTON
@@ -116,5 +114,7 @@ function updateAwayButton() {
     return;
   }
   const count = batches.reduce((sum, b) => sum + b.students.filter(s => s.away).length, 0);
-  button.textContent = count ? `Temporarily Away (${ count })` : "Temporarily Away";
+  button.innerHTML = count
+    ? `Temporarily<br>Away (${ count })`
+    : `Temporarily<br>Away`;
 }
