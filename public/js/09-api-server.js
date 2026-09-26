@@ -118,3 +118,22 @@ async function doSaveBatchesToServer() {
 window.addEventListener("load", async () => {
   await loadBatchesFromServer();
 });
+/* =====================================================
+   WARN BEFORE LEAVING WHILE A SAVE IS STILL IN FLIGHT
+   Temporary Away, To-Do और Move जैसे actions saveData() को बिना
+   await किए call करते हैं ताकि UI तुरंत update दिखे — लेकिन इसका
+   मतलब है कि Server को असली PUT request पूरी होने में अभी कुछ
+   सौ milliseconds लग सकते हैं। अगर ठीक उसी बीच में browser को
+   Refresh/Close कर दिया जाए, तो वो PUT request बीच में ही cancel
+   हो जाती है, Save कभी होता ही नहीं, और अगली बार Home load होने
+   पर पुराना (बिना-बदलाव वाला) data वापस दिख जाता है — असल में यही
+   वो bug था। अब जब तक कोई Save चल रहा है (या दोबारा चलने वाला है),
+   Refresh/Close करने पर Browser अपनी खुद की "बदलाव Save नहीं हुए,
+   फिर भी जाना है?" वाली चेतावनी दिखाएगा।
+===================================================== */
+window.addEventListener("beforeunload", (event) => {
+  if (batchSaveInFlight || batchSaveQueued) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+});
