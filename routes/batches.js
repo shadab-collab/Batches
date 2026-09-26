@@ -24,7 +24,16 @@ router.get("/batches", async (req, res) => {
     });
   }
   try {
-    const record = await BatchData.findOne({ key: "main" }).lean();
+    /*
+         "key: main" के दो/ज़्यादा document हो सकते हैं (पुराने किसी
+         race की वजह से — जैसे बहुत जल्दी-जल्दी हुई दो Save request
+         एक साथ upsert करने की कोशिश करें)। ऐसे हालात में बिना sort
+         के findOne() किसी भी एक को उठा सकता है — जो ज़रूरी नहीं कि
+         वही हो जिसमें अभी-अभी हुआ बदलाव Save हुआ था। इसीलिए हमेशा
+         सबसे हाल में updated document ही लिया जाता है, चाहे और भी
+         पुराने duplicate document क्यों न पड़े हों।
+      */
+    const record = await BatchData.findOne({ key: "main" }).sort({ updatedAt: -1 }).lean();
     if (!record) {
       return res.json({
         batches: null,
@@ -65,7 +74,18 @@ router.put("/batches", async (req, res) => {
         message: "batches must be an array"
       });
     }
-    const saved = await BatchData.findOneAndUpdate({ key: "main" }, {
+    /*
+         findOneAndUpdate({key:"main"}) सिर्फ ज़्यादा से ज़्यादा एक ही
+         document match/update करता है — अगर "main" key वाले 2+
+         document पहले से मौजूद हों (पुराने race से बचे हुए), तो
+         हमेशा सबसे हाल में updated वाले को ही update करें (updatedAt
+         से sort करके उसकी _id पकड़ें), ताकि हर बार Save और उसके बाद
+         का Read हमेशा एक ही असली document पर हों। बाकी बचे किसी भी
+         पुराने duplicate "main" document को यहीं permanently हटा भी
+         दिया जाता है, ताकि आगे कभी वो दोबारा गलती से न पढ़ा जाए।
+      */
+    const latestExisting = await BatchData.findOne({ key: "main" }).sort({ updatedAt: -1 }).select("_id").lean();
+    const update = {
       $set: {
         key: "main",
         batches,
@@ -73,11 +93,18 @@ router.put("/batches", async (req, res) => {
         awayStudents: Array.isArray(awayStudents) ? awayStudents : [],
         todos: Array.isArray(todos) ? todos : []
       }
-    }, {
-      upsert: true,
-      new: true,
-      setDefaultsOnInsert: true
-    }).lean();
+    };
+    const saved = latestExisting ?
+      await BatchData.findByIdAndUpdate(latestExisting._id, update, { new: true }).lean() :
+      await BatchData.findOneAndUpdate({ key: "main" }, update, {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true
+      }).lean();
+    const deleted = await BatchData.deleteMany({ key: "main", _id: { $ne: saved._id } });
+    if (deleted.deletedCount) {
+      console.warn(`Removed ${ deleted.deletedCount } stray duplicate "main" BatchData document(s).`);
+    }
     res.json({
       success: true,
       batches: saved.batches || [],
