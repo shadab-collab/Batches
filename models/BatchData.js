@@ -38,6 +38,14 @@ const studentSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  awayBatchId: {
+    type: String,
+    default: ""
+  },
+  awayBatchName: {
+    type: String,
+    default: ""
+  },
   // Free student — no Fee is tracked/collected for them at all.
   feeFree: {
     type: Boolean,
@@ -107,6 +115,14 @@ const batchDataSchema = new mongoose.Schema({
     default: []
   },
   inactiveStudents: {
+    type: [studentSchema],
+    default: []
+  },
+  // Temporarily Away students live here — same shape as
+  // inactiveStudents, kept as its own top-level array (the same
+  // proven pattern Inactive already uses) rather than a flag
+  // buried inside a batch's student list.
+  awayStudents: {
     type: [studentSchema],
     default: []
   },

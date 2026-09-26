@@ -128,12 +128,13 @@ const defaultBatches = [
 const DATA_VERSION = "4";
 let batches = [];
 let inactiveStudents = [];
+let awayStudents = [];
 let todos = [];
 let currentBatch = null;
 let profileBatchIndex = null;
 let profileStudentIndex = null;
 let profileInactiveIndex = null;
-let profileCameFromAway = false;
+let profileAwayIndex = null;
 /* =====================================================
    CREATE STUDENT
 ===================================================== */
@@ -145,8 +146,9 @@ function createStudent(name) {
     active: true,
     admissionDate: (typeof FeeUtils !== "undefined" ? FeeUtils.todayISO() : ""),
     feeHistoryKeys: [],
-    away: false,
     awaySince: "",
+    awayBatchId: "",
+    awayBatchName: "",
     feeFree: false
   };
 }
@@ -196,11 +198,14 @@ function normalizeStudent(student) {
   if (!Array.isArray(student.feeHistoryKeys)) {
     student.feeHistoryKeys = [];
   }
-  if (typeof student.away !== "boolean") {
-    student.away = false;
-  }
   if (typeof student.awaySince !== "string") {
     student.awaySince = "";
+  }
+  if (typeof student.awayBatchId !== "string") {
+    student.awayBatchId = "";
+  }
+  if (typeof student.awayBatchName !== "string") {
+    student.awayBatchName = "";
   }
   if (typeof student.feeFree !== "boolean") {
     student.feeFree = false;
@@ -216,6 +221,9 @@ function normalizeAllData() {
   }
   if (!Array.isArray(inactiveStudents)) {
     inactiveStudents = [];
+  }
+  if (!Array.isArray(awayStudents)) {
+    awayStudents = [];
   }
   if (!Array.isArray(todos)) {
     todos = [];
@@ -255,15 +263,25 @@ function normalizeAllData() {
     });
   });
   inactiveStudents = inactiveStudents.map(normalizeStudent).filter(student => student.name);
+  awayStudents = awayStudents.map(normalizeStudent).filter(student => student.name);
   /*
        पुराने inactive students को
        active batch में नहीं रहने देंगे।
+       (साथ ही, किसी पुराने/अधूरे save से बच गया कोई
+       "away:true" flag वाला student अगर अब भी किसी
+       batch के अंदर मिले, उसे यहीं awayStudents में
+       transfer कर दिया जाता है — एक बार की सफाई।)
     */
   batches.forEach(batch => {
     const activeStudents = [];
     batch.students.forEach(student => {
       if (student.active === false) {
         inactiveStudents.push(student);
+      } else if (student.away === true) {
+        student.awayBatchId = student.awayBatchId || batch.id;
+        student.awayBatchName = student.awayBatchName || batch.name;
+        delete student.away;
+        awayStudents.push(student);
       } else {
         activeStudents.push(student);
       }
@@ -271,7 +289,7 @@ function normalizeAllData() {
     batch.students = activeStudents;
   });
   /*
-       Duplicate inactive records हटाएँ।
+       Duplicate inactive/away records हटाएँ।
     */
   const seen = new Set();
   inactiveStudents = inactiveStudents.filter(student => {
@@ -279,6 +297,14 @@ function normalizeAllData() {
       return false;
     }
     seen.add(student.id);
+    return true;
+  });
+  const seenAway = new Set();
+  awayStudents = awayStudents.filter(student => {
+    if (seenAway.has(student.id)) {
+      return false;
+    }
+    seenAway.add(student.id);
     return true;
   });
 }

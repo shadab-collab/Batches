@@ -26,6 +26,19 @@ if (savedVersion !== DATA_VERSION) {
     }
   }
   inactiveStudents = oldInactive;
+  let oldAway = [];
+  const awayRaw = localStorage.getItem("awayStudentsData");
+  if (awayRaw) {
+    try {
+      const parsedAway = JSON.parse(awayRaw);
+      if (Array.isArray(parsedAway)) {
+        oldAway = parsedAway;
+      }
+    } catch (error) {
+      oldAway = [];
+    }
+  }
+  awayStudents = oldAway;
   let oldTodos = [];
   const todosRaw = localStorage.getItem("todosData");
   if (todosRaw) {
@@ -43,6 +56,7 @@ if (savedVersion !== DATA_VERSION) {
   localStorage.setItem("batchManagerDataVersion", DATA_VERSION);
   localStorage.setItem("batchManagerData", JSON.stringify(batches));
   localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
+  localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
   localStorage.setItem("todosData", JSON.stringify(todos));
 } else {
   try {
@@ -54,6 +68,11 @@ if (savedVersion !== DATA_VERSION) {
     inactiveStudents = JSON.parse(localStorage.getItem("inactiveStudentsData")) || [];
   } catch (error) {
     inactiveStudents = [];
+  }
+  try {
+    awayStudents = JSON.parse(localStorage.getItem("awayStudentsData")) || [];
+  } catch (error) {
+    awayStudents = [];
   }
   try {
     todos = JSON.parse(localStorage.getItem("todosData")) || [];
@@ -68,6 +87,7 @@ if (savedVersion !== DATA_VERSION) {
 function saveData() {
   localStorage.setItem("batchManagerData", JSON.stringify(batches));
   localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
+  localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
   localStorage.setItem("todosData", JSON.stringify(todos));
   if (window.API_MODE && typeof saveBatchesToServer === "function") {
     saveBatchesToServer();

@@ -50,8 +50,11 @@ function populateTodoStudentSelect() {
   const options = [];
   batches.forEach(batch => {
     batch.students.forEach(s => {
-      options.push({ id: s.id, label: `${ s.name }${ s.away ? " (Away)" : "" } — ${ batch.name }` });
+      options.push({ id: s.id, label: `${ s.name } — ${ batch.name }` });
     });
+  });
+  awayStudents.forEach(s => {
+    options.push({ id: s.id, label: `${ s.name } (Away) — ${ s.awayBatchName || "" }` });
   });
   inactiveStudents.forEach(s => {
     options.push({ id: s.id, label: `${ s.name } (Inactive)` });

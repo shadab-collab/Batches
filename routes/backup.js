@@ -143,6 +143,7 @@ async function buildBackupDataset() {
   const data = await BatchData.findOne({ key: "main" }).lean();
   const batches = (data && data.batches) || [];
   const inactiveStudents = (data && data.inactiveStudents) || [];
+  const awayStudents = (data && data.awayStudents) || [];
 
   const owners = new Map();
   function touch(ownerType, ownerKey, name, isCurrent) {
@@ -187,8 +188,12 @@ async function buildBackupDataset() {
 
   batches.forEach(batch => {
     (batch.students || []).forEach(student => {
-      processStudent(student, batch.name, student.away ? "Temporarily Away" : "Active");
+      processStudent(student, batch.name, "Active");
     });
+  });
+  awayStudents.forEach(student => {
+    const since = student.awaySince ? ` (${ FeeUtils.formatDDMM(student.awaySince) } से)` : "";
+    processStudent(student, student.awayBatchName || "— Temporarily Away —", "Temporarily Away" + since);
   });
   inactiveStudents.forEach(student => {
     const since = student.inactiveSince ? ` (${ FeeUtils.formatDDMM(student.inactiveSince) } से)` : "";
@@ -379,11 +384,19 @@ router.get("/export-html", async (req, res) => {
 ===================================================== */
 router.get("/export-pdf", async (req, res) => {
   try {
+    const path = require("path");
     const PDFDocument = require("pdfkit");
     const { owners, feeStateByKey, batchGroups, sortedMonths } = await buildBackupDataset();
 
     const generatedOn = FeeUtils.formatDDMM(FeeUtils.todayISO()) + " " + new Date().getFullYear();
     const doc = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
+
+    // Default pdfkit font (Helvetica) has no Hindi/Devanagari glyphs at
+    // all — Hindi text would render blank. FreeSans covers both Latin
+    // and Devanagari in one font, so it's used for everything below.
+    doc.registerFont("Hindi", path.join(__dirname, "../public/fonts/FreeSans.ttf"));
+    doc.registerFont("Hindi-Bold", path.join(__dirname, "../public/fonts/FreeSansBold.ttf"));
+    doc.font("Hindi");
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="backup-${ FeeUtils.todayISO() }.pdf"`);
@@ -431,17 +444,20 @@ router.get("/export-pdf", async (req, res) => {
       });
     }
 
-    doc.fontSize(18).text("Batches — पूरा Backup", { align: "left" });
+    doc.font("Hindi-Bold").fontSize(18).text("Batches — पूरा Backup", { align: "left" });
+    doc.font("Hindi");
     doc.fontSize(9).fillColor("#666").text(`Generated on: ${ generatedOn } — यह Record खास कर Fee के लिए है।`);
     doc.fillColor("#000").moveDown(1);
 
-    doc.fontSize(13).text("1. Batch-wise Student/Family Fee Record", { underline: true });
+    doc.font("Hindi-Bold").fontSize(13).text("1. Batch-wise Student/Family Fee Record", { underline: true });
+    doc.font("Hindi");
     doc.moveDown(0.5);
 
     const renderedOwnerKeys = new Set();
     for (const [batchLabel, rows] of batchGroups.entries()) {
       ensureSpace(24);
-      doc.fontSize(11).fillColor("#000").text(batchLabel);
+      doc.font("Hindi-Bold").fontSize(11).fillColor("#000").text(batchLabel);
+      doc.font("Hindi");
       doc.moveDown(0.3);
 
       for (const row of rows) {
@@ -483,7 +499,8 @@ router.get("/export-pdf", async (req, res) => {
     const oldEntries = Array.from(owners.entries()).filter(([, info]) => !info.currentMembers.length);
     if (oldEntries.length) {
       doc.addPage();
-      doc.fontSize(13).text("2. पुराने Records (अब किसी की Current Key नहीं)", { underline: true });
+      doc.font("Hindi-Bold").fontSize(13).text("2. पुराने Records (अब किसी की Current Key नहीं)", { underline: true });
+      doc.font("Hindi");
       doc.moveDown(0.5);
       for (const [k, info] of oldEntries) {
         const state = feeStateByKey.get(k);
@@ -502,7 +519,8 @@ router.get("/export-pdf", async (req, res) => {
     }
 
     doc.addPage();
-    doc.fontSize(13).text("Monthly Collection Summary", { underline: true });
+    doc.font("Hindi-Bold").fontSize(13).text("Monthly Collection Summary", { underline: true });
+    doc.font("Hindi");
     doc.moveDown(0.5);
     if (!sortedMonths.length) {
       doc.fontSize(9).fillColor("#888").text("कोई Cycle नहीं मिला।");

@@ -22,10 +22,12 @@ async function loadBatchesFromServer() {
         */
     batches = data.batches;
     inactiveStudents = Array.isArray(data.inactiveStudents) ? data.inactiveStudents : [];
+    awayStudents = Array.isArray(data.awayStudents) ? data.awayStudents : [];
     todos = Array.isArray(data.todos) ? data.todos : [];
     normalizeAllData();
     localStorage.setItem("batchManagerData", JSON.stringify(batches));
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
+    localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
     render();
     return true;
@@ -75,6 +77,7 @@ async function doSaveBatchesToServer() {
       body: JSON.stringify({
         batches: batches,
         inactiveStudents: inactiveStudents,
+        awayStudents: awayStudents,
         todos: todos
       })
     });
@@ -88,17 +91,22 @@ async function doSaveBatchesToServer() {
     if (Array.isArray(data.inactiveStudents)) {
       inactiveStudents = data.inactiveStudents;
     }
+    if (Array.isArray(data.awayStudents)) {
+      awayStudents = data.awayStudents;
+    }
     if (Array.isArray(data.todos)) {
       todos = data.todos;
     }
     localStorage.setItem("batchManagerData", JSON.stringify(batches));
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
+    localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
     return true;
   } catch (error) {
     console.warn("Could not save to MongoDB API.", error);
     localStorage.setItem("batchManagerData", JSON.stringify(batches));
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
+    localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
     alert("⚠️ बदलाव Server पर Save नहीं हो सका (Internet चेक करें) — अभी सिर्फ इसी Phone में सुरक्षित है, इंटरनेट आते ही दोबारा कोई भी बदलाव करके पक्का कर लें।");
     return false;

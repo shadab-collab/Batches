@@ -363,60 +363,183 @@ router.get("/summary", async (req, res) => {
    values — historical and automatic months side by side on
    one continuous timeline.
 ===================================================== */
+async function buildTimeline() {
+  const snapshots = await MonthlySnapshot.find({}).lean();
+  const adjustments = await MonthlyAdjustment.find({}).lean();
+
+  const adjustmentByMonth = {};
+  for (const a of adjustments) {
+    adjustmentByMonth[a.yearMonth] = a;
+  }
+
+  const months = new Set([
+    ...snapshots.map(s => s.yearMonth),
+    ...adjustments.map(a => a.yearMonth)
+  ]);
+
+  const timeline = [];
+  for (const yearMonth of months) {
+    const snapshot = snapshots.find(s => s.yearMonth === yearMonth);
+    const adjustment = adjustmentByMonth[yearMonth];
+
+    const originalActiveStudents = snapshot ? snapshot.activeStudentCount : null;
+
+    let originalTuition;
+    let originalAdmission;
+    if (snapshot && snapshot.source === "manual") {
+      originalTuition = snapshot.manualCollection || 0;
+      originalAdmission = snapshot.manualAdmissionCollection || 0;
+    } else {
+      const { from, to } = monthRange(yearMonth);
+      originalTuition = await tuitionCollectionInRange(from, to);
+      originalAdmission = await admissionCollectionInRange(from, to);
+    }
+
+    const activeStudents = applyAdjustment(originalActiveStudents, adjustment && adjustment.activeStudents);
+    const totalCollectionFinal =
+      applyAdjustment(originalTuition, adjustment && adjustment.tuitionCollection).final +
+      applyAdjustment(originalAdmission, adjustment && adjustment.admissionCollection).final;
+
+    timeline.push({
+      yearMonth,
+      activeStudentsFinal: activeStudents.final,
+      totalCollectionFinal,
+      source: snapshot ? snapshot.source : "auto",
+      adjusted: !!adjustment
+    });
+  }
+
+  timeline.sort((a, b) => (a.yearMonth < b.yearMonth ? -1 : 1));
+  return timeline;
+}
+
 router.get("/timeline", async (req, res) => {
   try {
-    const snapshots = await MonthlySnapshot.find({}).lean();
-    const adjustments = await MonthlyAdjustment.find({}).lean();
-
-    const adjustmentByMonth = {};
-    for (const a of adjustments) {
-      adjustmentByMonth[a.yearMonth] = a;
-    }
-
-    const months = new Set([
-      ...snapshots.map(s => s.yearMonth),
-      ...adjustments.map(a => a.yearMonth)
-    ]);
-
-    const timeline = [];
-    for (const yearMonth of months) {
-      const snapshot = snapshots.find(s => s.yearMonth === yearMonth);
-      const adjustment = adjustmentByMonth[yearMonth];
-
-      const originalActiveStudents = snapshot ? snapshot.activeStudentCount : null;
-
-      let originalTuition;
-      let originalAdmission;
-      if (snapshot && snapshot.source === "manual") {
-        originalTuition = snapshot.manualCollection || 0;
-        originalAdmission = snapshot.manualAdmissionCollection || 0;
-      } else {
-        const { from, to } = monthRange(yearMonth);
-        originalTuition = await tuitionCollectionInRange(from, to);
-        originalAdmission = await admissionCollectionInRange(from, to);
-      }
-
-      const activeStudents = applyAdjustment(originalActiveStudents, adjustment && adjustment.activeStudents);
-      const totalCollectionFinal =
-        applyAdjustment(originalTuition, adjustment && adjustment.tuitionCollection).final +
-        applyAdjustment(originalAdmission, adjustment && adjustment.admissionCollection).final;
-
-      timeline.push({
-        yearMonth,
-        activeStudentsFinal: activeStudents.final,
-        totalCollectionFinal,
-        source: snapshot ? snapshot.source : "auto",
-        adjusted: !!adjustment
-      });
-    }
-
-    timeline.sort((a, b) => (a.yearMonth < b.yearMonth ? -1 : 1));
-
+    const timeline = await buildTimeline();
     res.json({ success: true, timeline });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Load नहीं हो सका" });
+  }
+});
+
+
+/* =====================================================
+   GROWTH ANALYSIS PAGE
+   Opens in a new tab (like Backup) — the same Timeline data,
+   drawn as charts (collection trend, student-count trend, and
+   a source breakdown) via Chart.js, instead of a plain list.
+===================================================== */
+router.get("/growth-analysis", async (req, res) => {
+  try {
+    const timeline = await buildTimeline();
+
+    const labels = timeline.map(t => t.yearMonth);
+    const collections = timeline.map(t => t.totalCollectionFinal);
+    const students = timeline.map(t => t.activeStudentsFinal);
+
+    const sourceCounts = { auto: 0, manual: 0, adjusted: 0 };
+    timeline.forEach(t => {
+      if (t.adjusted) {
+        sourceCounts.adjusted++;
+      } else if (t.source === "manual") {
+        sourceCounts.manual++;
+      } else {
+        sourceCounts.auto++;
+      }
+    });
+
+    const tableRows = timeline.slice().reverse().map(t => `
+            <tr>
+                <td>${ t.yearMonth }</td>
+                <td>₹${ t.totalCollectionFinal }</td>
+                <td>${ t.activeStudentsFinal ?? "-" }</td>
+                <td>${ t.source === "manual" ? "Manual" : "Auto" }${ t.adjusted ? " (Adjusted)" : "" }</td>
+            </tr>
+        `).join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>Growth Analysis</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    body{font-family:Arial,"Noto Sans Devanagari",sans-serif;margin:20px;color:#222;background:#f7f8fa;}
+    h1{font-size:20px;margin-bottom:18px;}
+    .chart-card{background:#fff;border-radius:10px;padding:16px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+    .chart-card h2{font-size:15px;margin:0 0 12px;}
+    .charts-row{display:flex;gap:16px;flex-wrap:wrap;}
+    .charts-row .chart-card{flex:1;min-width:260px;}
+    canvas{max-width:100%;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;}
+    th{background:#f0f2f5;}
+    .empty{color:#888;font-style:italic;text-align:center;padding:30px;}
+</style>
+</head>
+<body>
+
+    <h1>📈 Growth Analysis</h1>
+
+    ${ !timeline.length ? `<div class="empty">अभी कोई Timeline Data नहीं है</div>` : `
+
+    <div class="chart-card">
+        <h2>Monthly Collection (₹)</h2>
+        <canvas id="collectionChart" height="90"></canvas>
+    </div>
+
+    <div class="charts-row">
+        <div class="chart-card">
+            <h2>Active Students (हर महीने)</h2>
+            <canvas id="studentsChart" height="140"></canvas>
+        </div>
+        <div class="chart-card">
+            <h2>Month Data — कैसे आया</h2>
+            <canvas id="sourceChart" height="140"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-card">
+        <h2>पूरी Table</h2>
+        <table>
+            <thead><tr><th>Month</th><th>Collection</th><th>Students</th><th>Source</th></tr></thead>
+            <tbody>${ tableRows }</tbody>
+        </table>
+    </div>
+
+    <script>
+        const labels = ${ JSON.stringify(labels) };
+        new Chart(document.getElementById('collectionChart'), {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Collection (₹)', data: ${ JSON.stringify(collections) }, borderColor: '#1565c0', backgroundColor: 'rgba(21,101,192,0.15)', fill: true, tension: 0.3 }] },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+        new Chart(document.getElementById('studentsChart'), {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Students', data: ${ JSON.stringify(students) }, backgroundColor: '#2e7d32' }] },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+        new Chart(document.getElementById('sourceChart'), {
+            type: 'pie',
+            data: {
+                labels: ['Auto', 'Manual', 'Adjusted'],
+                datasets: [{ data: [${ sourceCounts.auto }, ${ sourceCounts.manual }, ${ sourceCounts.adjusted }], backgroundColor: ['#42a5f5', '#ffa726', '#ab47bc'] }]
+            },
+            options: { responsive: true }
+        });
+    </script>
+    ` }
+
+</body>
+</html>`;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Growth Analysis नहीं बन सका।");
   }
 });
 

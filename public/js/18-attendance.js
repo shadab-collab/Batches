@@ -94,15 +94,15 @@ async function loadAttendanceDay() {
     return;
   }
 
-  const students = batch.students.filter(s => !s.away);
-  const awayStudents = batch.students.filter(s => s.away);
-  if (!students.length && !awayStudents.length) {
+  const students = batch.students;
+  const awayInThisBatch = awayStudents.filter(s => s.awayBatchId === batch.id);
+  if (!students.length && !awayInThisBatch.length) {
     body.innerHTML = `<div class="empty">इस Batch में कोई Active Student नहीं है।</div>`;
     return;
   }
 
   try {
-    const allIds = batch.students.map(s => s.id);
+    const allIds = students.map(s => s.id).concat(awayInThisBatch.map(s => s.id));
     const res = await fetch("/api/attendance/day", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -120,11 +120,11 @@ async function loadAttendanceDay() {
     // aren't toggleable, so they get written Absent every time this
     // day's attendance is submitted.
     attendanceDayStudentIds = allIds;
-    attendanceAwayIds = new Set(awayStudents.map(s => s.id));
+    attendanceAwayIds = new Set(awayInThisBatch.map(s => s.id));
     attendancePendingAbsent = new Set(data.absentStudentIds);
     attendanceAwayIds.forEach(id => attendancePendingAbsent.add(id));
 
-    renderAttendanceRows(students, awayStudents);
+    renderAttendanceRows(students, awayInThisBatch);
   } catch (error) {
     body.innerHTML = `<div class="empty">Load नहीं हो सका। इंटरनेट चेक करें।</div>`;
   }
@@ -133,7 +133,7 @@ async function loadAttendanceDay() {
 /* Redraws the student list from attendancePendingAbsent — pure UI,
    no network call. Called after every tap and after a submit.
    Away students render as a fixed, non-toggleable "Auto Absent" row. */
-function renderAttendanceRows(students, awayStudents) {
+function renderAttendanceRows(students, awayList) {
   const body = document.getElementById("attendanceDayBody");
   const rows = students.map(s => {
     const isAbsent = attendancePendingAbsent.has(s.id);
@@ -147,7 +147,7 @@ function renderAttendanceRows(students, awayStudents) {
             `;
   }).join("");
 
-  const awayRows = (awayStudents || []).map(s => `
+  const awayRows = (awayList || []).map(s => `
                 <div class="dashboard-row" style="opacity:0.6;">
                     <span>${ escapeHtml(s.name) } <span class="student-identity">(Away)</span></span>
                     <button class="small-btn btn-danger" disabled>Absent (Auto)</button>
@@ -177,7 +177,7 @@ function toggleAttendanceLocal(studentId) {
   }
   const batch = batches[attendanceBatchIndex];
   if (batch) {
-    renderAttendanceRows(batch.students.filter(s => !s.away), batch.students.filter(s => s.away));
+    renderAttendanceRows(batch.students, awayStudents.filter(s => s.awayBatchId === batch.id));
   }
 }
 

@@ -698,6 +698,9 @@ router.get("/monthly-list", async (req, res) => {
     const batchData = await BatchData.findOne({ key: "main" }).lean();
     const allStudents = [];
     ((batchData && batchData.batches) || []).forEach(b => allStudents.push(...(b.students || [])));
+    // Temporarily Away students keep billing normally — just not from
+    // the working Batch list — so they still belong in this collection.
+    allStudents.push(...((batchData && batchData.awayStudents) || []));
 
     const ownersMap = new Map();
     allStudents.forEach(s => {

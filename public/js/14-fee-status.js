@@ -37,9 +37,10 @@ function collectFeeOwnersFromBatches() {
 
 /* =====================================================
    COLLECT OWNER KEYS FROM *ALL* KNOWN STUDENTS
-   (active batches + inactive list — expelled students are
-   excluded since they're already gone from every list, so
-   any data left behind for them is genuinely orphaned)
+   (active batches + inactive list + temporarily-away list —
+   expelled students are excluded since they're already gone
+   from every list, so any data left behind for them is
+   genuinely orphaned)
 ===================================================== */
 function collectAllKnownFeeOwners() {
   const seen = new Set();
@@ -57,6 +58,7 @@ function collectAllKnownFeeOwners() {
 
   batches.forEach(batch => batch.students.forEach(addStudent));
   inactiveStudents.filter(s => !s.expelled).forEach(addStudent);
+  awayStudents.forEach(addStudent);
 
   return owners;
 }

@@ -546,6 +546,23 @@ button{
     transform:scale(.99)
 }
 
+.dashboard-action-btn{
+    display:block;
+    width:100%;
+    background:#fff;
+    border:1px solid #d7d7d7;
+    color:#222;
+    font-weight:700;
+    padding:13px;
+    border-radius:10px;
+    font-size:15px;
+    margin-top:12px;
+}
+
+.dashboard-action-btn:active{
+    transform:scale(.99)
+}
+
 
 /* =====================================================
    INACTIVE STUDENTS PAGE

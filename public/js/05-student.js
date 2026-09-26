@@ -36,11 +36,11 @@ function moveDown(index) {
 /* =====================================================
    OPEN STUDENT PROFILE
 ===================================================== */
-function openStudentProfile(bi, si, fromAway) {
+function openStudentProfile(bi, si) {
   profileBatchIndex = bi;
   profileStudentIndex = si;
   profileInactiveIndex = null;
-  profileCameFromAway = !!fromAway;
+  profileAwayIndex = null;
   const batch = batches[bi];
   const student = batch.students[si];
   if (!student) {
@@ -59,9 +59,9 @@ function openStudentProfile(bi, si, fromAway) {
   document.getElementById("familyActions").style.display = "";
   document.getElementById("expelledBanner").style.display = "none";
   document.getElementById("expellActionRow").style.display = "none";
-  document.getElementById("awayBanner").style.display = student.away ? "" : "none";
-  document.getElementById("awayActionsRow").style.display = student.away ? "" : "none";
-  document.getElementById("awayMarkBtn").style.display = student.away ? "none" : "";
+  document.getElementById("awayBanner").style.display = "none";
+  document.getElementById("awayActionsRow").style.display = "none";
+  document.getElementById("awayMarkBtn").style.display = "";
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
@@ -91,6 +91,9 @@ function openStudentProfile(bi, si, fromAway) {
 function getCurrentProfileStudent() {
   if (profileInactiveIndex !== null) {
     return inactiveStudents[profileInactiveIndex];
+  }
+  if (profileAwayIndex !== null) {
+    return awayStudents[profileAwayIndex];
   }
   if (profileBatchIndex !== null && profileStudentIndex !== null) {
     return batches[profileBatchIndex].students[profileStudentIndex];

@@ -11,15 +11,7 @@ function render() {
     const box = document.createElement("div");
     box.className = "batch";
     box.onclick = () => openBatch(index);
-    let visibleSerial = 0;
-    let students = batch.students
-      .map((student, i) => ({ student, i }))
-      .filter(entry => !entry.student.away)
-      .map(entry => {
-        const student = entry.student;
-        const i = entry.i;
-        visibleSerial++;
-        return `
+    let students = batch.students.map((student, i) => `
 
                             <div
                                 class="student"
@@ -28,7 +20,7 @@ function render() {
                                 <span
                                     class="serial"
                                 >
-                                    ${ visibleSerial }.
+                                    ${ i + 1 }.
                                 </span>
 
                                 <button
@@ -49,8 +41,7 @@ function render() {
 
                             </div>
 
-                        `;
-      }).join("");
+                        `).join("");
     if (!students) {
       students = `<div class="empty">
                         कोई Student नहीं
@@ -113,7 +104,7 @@ function updateAwayButton() {
   if (!button) {
     return;
   }
-  const count = batches.reduce((sum, b) => sum + b.students.filter(s => s.away).length, 0);
+  const count = awayStudents.length;
   button.innerHTML = count
     ? `Temporarily<br>Away (${ count })`
     : `Temporarily<br>Away`;

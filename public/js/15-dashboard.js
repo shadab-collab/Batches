@@ -91,7 +91,7 @@ function switchDashboardView(view) {
    Adjustment layer below sits on top of it, never replacing it)
 ===================================================== */
 async function refreshDashboardSnapshotAndLoad() {
-  const activeStudentCount = batches.reduce((sum, b) => sum + b.students.length, 0);
+  const activeStudentCount = batches.reduce((sum, b) => sum + b.students.length, 0) + awayStudents.length;
   const owners = collectFeeOwnersFromBatches();
 
   let totalMonthlyFeeCommitted = 0;
@@ -519,30 +519,10 @@ async function revertToAuto(yearMonth) {
 
 
 /* =====================================================
-   GROWTH TIMELINE — historical + automatic months together
+   GROWTH ANALYSIS — opens a new tab with charts (collection
+   trend, student-count trend, source breakdown), same as
+   how Backup opens its own tab.
 ===================================================== */
-async function loadGrowthTimeline() {
-  const box = document.getElementById("dashboardTimeline");
-  box.innerHTML = `<div class="empty">लोड हो रहा है...</div>`;
-
-  try {
-    const res = await fetch("/api/dashboard/timeline");
-    const data = await res.json();
-    if (!data.success) {
-      box.innerHTML = `<div class="empty">${ escapeHtml(data.message || "Error") }</div>`;
-      return;
-    }
-    if (!data.timeline.length) {
-      box.innerHTML = `<div class="empty">अभी कोई Timeline Data नहीं है</div>`;
-      return;
-    }
-    box.innerHTML = data.timeline.map(t => `
-            <div class="dashboard-row">
-                <span>${ monthLabel(t.yearMonth) } ${ t.adjusted ? '<span class="dashboard-adjusted-badge">Adjusted</span>' : "" }</span>
-                <strong>₹${ t.totalCollectionFinal } · ${ t.activeStudentsFinal ?? "-" } Students</strong>
-            </div>
-        `).join("");
-  } catch (error) {
-    box.innerHTML = `<div class="empty">Load नहीं हो सका। इंटरनेट चेक करें।</div>`;
-  }
+function openGrowthAnalysis() {
+  window.open("/api/dashboard/growth-analysis", "_blank");
 }
