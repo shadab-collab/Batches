@@ -8,25 +8,8 @@ function openBatch(index) {
   document.getElementById("batchName").value = batch.name;
   document.getElementById("batchTime").value = batch.time;
   document.getElementById("newStudent").value = "";
-  renderWeekdayPicker(batch.weeklyHolidays || []);
   renderStudents();
   document.getElementById("overlay").style.display = "flex";
-}
-
-const WEEKDAY_LABELS = ["रवि", "सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि"];
-
-function renderWeekdayPicker(selectedDays) {
-  const box = document.getElementById("batchWeeklyHolidays");
-  box.innerHTML = WEEKDAY_LABELS.map((label, day) => `
-        <label class="weekday-chip">
-            <input type="checkbox" value="${ day }" ${ selectedDays.includes(day) ? "checked" : "" }>
-            ${ label }
-        </label>
-    `).join("");
-}
-
-function getSelectedWeekdays() {
-  return Array.from(document.querySelectorAll("#batchWeeklyHolidays input:checked")).map(el => Number(el.value));
 }
 
 /* =====================================================
@@ -50,7 +33,6 @@ function saveBatch() {
     batches[currentBatch].name = name;
   }
   batches[currentBatch].time = time;
-  batches[currentBatch].weeklyHolidays = getSelectedWeekdays();
   saveData();
   closeModal();
 }

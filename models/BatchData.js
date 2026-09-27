@@ -92,10 +92,6 @@ const batchSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
-  weeklyHolidays: {
-    type: [Number],
-    default: []
-  },
   students: {
     type: [studentSchema],
     default: []

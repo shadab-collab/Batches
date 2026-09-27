@@ -249,9 +249,6 @@ function normalizeAllData() {
     if (!batch.id) {
       batch.id = "B-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
     }
-    if (!Array.isArray(batch.weeklyHolidays)) {
-      batch.weeklyHolidays = [];
-    }
     batch.students = batch.students.map(normalizeStudent).filter(student => student.name);
     /*
          हर active student का batchId हमेशा

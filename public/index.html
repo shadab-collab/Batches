@@ -84,13 +84,6 @@
 
     <button
         class="inactive-home-btn"
-        onclick="openHolidaysModal()"
-    >
-        🎌<br>Holidays
-    </button>
-
-    <button
-        class="inactive-home-btn"
         onclick="openMonthlyListModal()"
     >
         📋<br>Monthly List
@@ -153,17 +146,6 @@
                 id="batchTime"
                 type="time"
             >
-
-        </div>
-
-
-        <div class="field">
-
-            <label>
-                Weekly Holiday (हफ़्ते में जिस दिन इस Batch की class नहीं लगती)
-            </label>
-
-            <div id="batchWeeklyHolidays" class="weekday-picker"></div>
 
         </div>
 
@@ -1316,21 +1298,6 @@
 
     </div>
 
-</div>
-
-
-<!-- =====================================================
-     HOLIDAYS OVERLAY
-===================================================== -->
-
-<div class="overlay" id="holidaysOverlay">
-    <div class="modal">
-        <h2>Holidays (पूरे दिन की छुट्टी)</h2>
-        <div id="holidaysModalBody"></div>
-        <div class="actions">
-            <button class="btn-light" onclick="closeHolidaysModal()">Close</button>
-        </div>
-    </div>
 </div>
 
 

@@ -399,6 +399,65 @@ router.get("/export-pdf", async (req, res) => {
       }
     }
 
+    // सारी tables असल border-वाली grid के तौर पर खींचता है (Print-PDF वाली
+    // .fee-table जैसी) — header पर हल्का background, हर cell के चारों तरफ पतली
+    // line, और अगर table page के आख़िर में टूटे तो अगले page पर header फिर से
+    // छप जाता है।
+    function drawBorderedTable(startX, colWidths, headerLabels, rows) {
+      const tableWidth = colWidths.reduce((a, b) => a + b, 0);
+
+      function drawGrid(top, height) {
+        doc.strokeColor("#dddddd").lineWidth(0.5);
+        doc.moveTo(startX, top).lineTo(startX + tableWidth, top).stroke();
+        let vx = startX;
+        colWidths.forEach(w => {
+          doc.moveTo(vx, top).lineTo(vx, top + height).stroke();
+          vx += w;
+        });
+        doc.moveTo(vx, top).lineTo(vx, top + height).stroke();
+      }
+
+      function drawHeader() {
+        ensureSpace(20);
+        const top = doc.y;
+        const h = 16;
+        doc.rect(startX, top, tableWidth, h).fill("#f2f2f2");
+        doc.fillColor("#000").fontSize(8.5);
+        let x = startX;
+        headerLabels.forEach((label, i) => {
+          doc.text(label, x + 4, top + 3, { width: colWidths[i] - 4 });
+          x += colWidths[i];
+        });
+        drawGrid(top, h);
+        doc.y = top + h;
+      }
+
+      drawHeader();
+      let lastBottom = doc.y;
+
+      rows.forEach(row => {
+        doc.fontSize(8.5);
+        const rh = Math.max(...row.texts.map((t, i) => doc.heightOfString(String(t), { width: colWidths[i] - 4 }))) + 6;
+        if (doc.y + rh > doc.page.height - doc.page.margins.bottom) {
+          doc.addPage();
+          drawHeader();
+        }
+        const top = doc.y;
+        let x = startX;
+        row.texts.forEach((t, i) => {
+          doc.fillColor((row.colors && row.colors[i]) || "#000");
+          doc.text(String(t), x + 4, top + 3, { width: colWidths[i] - 4 });
+          x += colWidths[i];
+        });
+        doc.fillColor("#000");
+        drawGrid(top, rh);
+        doc.y = top + rh;
+        lastBottom = doc.y;
+      });
+
+      return lastBottom;
+    }
+
     function drawCycleTable(cycles) {
       if (!cycles.length) {
         doc.fontSize(9).fillColor("#888").text("कोई Cycle नहीं बना।", { indent: 10 });
@@ -407,43 +466,24 @@ router.get("/export-pdf", async (req, res) => {
       }
       ensureSpace(20);
       const startX = doc.x;
-      doc.fontSize(8.5).fillColor("#000");
-      let x = startX;
-      const headers = [["Cycle", col.cycle], ["Due", col.due], ["Paid", col.paid], ["Charity", col.charity], ["Remaining", col.remaining], ["Status", col.status], ["Date", col.date]];
-      headers.forEach(([label, w]) => { doc.text(label, x, doc.y, { width: w }); x += w; });
-      doc.moveDown(0.3);
-      doc.moveTo(startX, doc.y).lineTo(startX + pageWidth, doc.y).strokeColor("#ccc").stroke();
-      doc.moveDown(0.2);
-
-      cycles.slice().reverse().forEach(c => {
-        doc.fontSize(8.5);
-        const cellTexts = [
-          FeeUtils.formatCycleRange(c),
-          `₹${ c.amountDue }`,
-          `₹${ c.paidSum }`,
-          c.charitySum > 0 ? `₹${ c.charitySum }` : "-",
-          `₹${ c.remaining }`,
-          c.status,
-          c.lastDate ? FeeUtils.formatDDMM(c.lastDate) : "-"
-        ];
-        const widths = [col.cycle, col.due, col.paid, col.charity, col.remaining, col.status, col.date];
-        // असली row-height नापें (लंबा Hindi Cycle टेक्स्ट कई बार 2 लाइनों में wrap होता
-        // है) — नहीं तो अगली row इसी के ऊपर छप जाती।
-        const rowHeight = Math.max(...cellTexts.map((t, i) => doc.heightOfString(t, { width: widths[i] })));
-        ensureSpace(rowHeight + 4);
-        const rowY = doc.y;
-        let cx = startX;
-        doc.fillColor("#000");
-        doc.text(cellTexts[0], cx, rowY, { width: widths[0] }); cx += widths[0];
-        doc.text(cellTexts[1], cx, rowY, { width: widths[1] }); cx += widths[1];
-        doc.text(cellTexts[2], cx, rowY, { width: widths[2] }); cx += widths[2];
-        doc.text(cellTexts[3], cx, rowY, { width: widths[3] }); cx += widths[3];
-        doc.text(cellTexts[4], cx, rowY, { width: widths[4] }); cx += widths[4];
+      const widths = [col.cycle, col.due, col.paid, col.charity, col.remaining, col.status, col.date];
+      const headerLabels = ["Cycle", "Due", "Paid", "Charity", "Remaining", "Status", "Date"];
+      const rows = cycles.slice().reverse().map(c => {
         const statusColor = c.status === "Paid" ? "#2e7d32" : (c.status === "Partial" ? "#e65100" : (c.status === "Unpaid" ? "#c62828" : "#000"));
-        doc.fillColor(statusColor).text(cellTexts[5], cx, rowY, { width: widths[5] }); cx += widths[5];
-        doc.fillColor("#000").text(cellTexts[6], cx, rowY, { width: widths[6] });
-        doc.y = rowY + rowHeight + 4;
+        return {
+          texts: [
+            FeeUtils.formatCycleRange(c),
+            `₹${ c.amountDue }`,
+            `₹${ c.paidSum }`,
+            c.charitySum > 0 ? `₹${ c.charitySum }` : "-",
+            `₹${ c.remaining }`,
+            c.status,
+            c.lastDate ? FeeUtils.formatDDMM(c.lastDate) : "-"
+          ],
+          colors: [null, null, null, null, null, statusColor, null]
+        };
       });
+      doc.y = drawBorderedTable(startX, widths, headerLabels, rows) + 4;
     }
 
     doc.font("Hindi-Bold").fontSize(18).text("Batches — पूरा Backup", { align: "left" });
@@ -457,10 +497,13 @@ router.get("/export-pdf", async (req, res) => {
 
     const renderedOwnerKeys = new Set();
     for (const [batchLabel, rows] of batchGroups.entries()) {
-      ensureSpace(24);
-      doc.font("Hindi-Bold").fontSize(11).fillColor("#000").text(batchLabel);
+      ensureSpace(26);
+      const bTop = doc.y;
+      const bHeight = 20;
+      doc.rect(doc.page.margins.left, bTop, pageWidth, bHeight).fill("#eef1f5");
+      doc.fillColor("#000").font("Hindi-Bold").fontSize(11).text(batchLabel, doc.page.margins.left + 8, bTop + 5);
       doc.font("Hindi");
-      doc.moveDown(0.3);
+      doc.y = bTop + bHeight + 6;
 
       for (const row of rows) {
         const ownerK = row.ownerType + ":" + row.ownerKey;
@@ -529,30 +572,15 @@ router.get("/export-pdf", async (req, res) => {
       doc.fillColor("#000");
     } else {
       const gcol = { month: 120, collection: 160, students: 120 };
-      let gx = doc.x;
-      doc.fontSize(9).fillColor("#000");
-      [["Month", gcol.month], ["Collection (₹)", gcol.collection], ["No. of Students", gcol.students]]
-        .forEach(([label, w]) => { doc.text(label, gx, doc.y, { width: w }); gx += w; });
-      doc.moveDown(0.3);
-      doc.moveTo(doc.page.margins.left, doc.y).lineTo(doc.page.margins.left + pageWidth, doc.y).strokeColor("#ccc").stroke();
-      doc.moveDown(0.2);
-
-      timeline.forEach(t => {
-        doc.fontSize(9);
-        const cellTexts = [
+      const gStartX = doc.page.margins.left;
+      const gRows = timeline.map(t => ({
+        texts: [
           t.yearMonth,
           `₹${ t.totalCollectionFinal }${ t.adjusted ? "  (Adjusted)" : "" }`,
           t.activeStudentsFinal ?? "-"
-        ];
-        const widths = [gcol.month, gcol.collection, gcol.students];
-        const rowHeight = Math.max(...cellTexts.map((txt, i) => doc.heightOfString(String(txt), { width: widths[i] })));
-        ensureSpace(rowHeight + 4);
-        const rowY = doc.y;
-        let cx = doc.page.margins.left;
-        doc.fillColor("#000");
-        cellTexts.forEach((txt, i) => { doc.text(String(txt), cx, rowY, { width: widths[i] }); cx += widths[i]; });
-        doc.y = rowY + rowHeight + 4;
-      });
+        ]
+      }));
+      doc.y = drawBorderedTable(gStartX, [gcol.month, gcol.collection, gcol.students], ["Month", "Collection (₹)", "No. of Students"], gRows) + 4;
     }
 
     doc.end();

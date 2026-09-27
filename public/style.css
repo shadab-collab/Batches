@@ -1298,28 +1298,6 @@ button{
 
 
 /* =====================================================
-   WEEKDAY PICKER (per-batch weekly holiday)
-===================================================== */
-
-.weekday-picker{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px
-}
-
-.weekday-chip{
-    display:flex;
-    align-items:center;
-    gap:5px;
-    background:#f2f2f2;
-    padding:6px 10px;
-    border-radius:20px;
-    font-size:13px;
-    cursor:pointer
-}
-
-
-/* =====================================================
    ATTENDANCE CALENDAR TEMPLATE (WhatsApp image export)
 ===================================================== */
 
