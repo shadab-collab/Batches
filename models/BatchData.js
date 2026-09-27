@@ -29,7 +29,7 @@ const studentSchema = new mongoose.Schema({
   },
   // Temporarily Away — student is neither attending nor formally
   // left. Stays in the batch's headcount and Fee record runs as
-  // normal; only hidden from the working list and daily Attendance.
+  // normal; only hidden from the working list.
   away: {
     type: Boolean,
     default: false

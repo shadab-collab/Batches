@@ -240,7 +240,6 @@ function openInactiveStudentProfile(index) {
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
-  loadAttendanceSummary(student);
 
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";
@@ -302,7 +301,7 @@ function sendStudentToAway() {
   if (!student) {
     return;
   }
-  const ok = confirm(`${ student.name } को Temporarily Away करना है?\n\nFee/Family Record जस का तस चलता रहेगा, बस List और Attendance से हट जाएगा।`);
+  const ok = confirm(`${ student.name } को Temporarily Away करना है?\n\nFee/Family Record जस का तस चलता रहेगा, बस List से हट जाएगा।`);
   if (!ok) {
     return;
   }
@@ -454,7 +453,6 @@ function openAwayStudentProfile(index) {
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
-  loadAttendanceSummary(student);
 
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";

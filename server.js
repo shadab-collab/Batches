@@ -6,7 +6,6 @@ const feesRouter = require("./routes/fees");
 const receiptsRouter = require("./routes/receipts");
 const dashboardRouter = require("./routes/dashboard");
 const assessmentRouter = require("./routes/assessment");
-const attendanceRouter = require("./routes/attendance");
 const backupRouter = require("./routes/backup");
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,14 +20,13 @@ app.get("/", (req, res) => {
 /* =====================================================
    API ROUTES
    (add new feature routers here as the project grows —
-    e.g. routes/attendance.js)
+    e.g. routes/receipts.js)
 ===================================================== */
 app.use("/api", batchesRouter);
 app.use("/api/fees", feesRouter);
 app.use("/api/receipts", receiptsRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/assessment", assessmentRouter);
-app.use("/api/attendance", attendanceRouter);
 app.use("/api/backup", backupRouter);
 /* =====================================================
    START SERVER

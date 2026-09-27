@@ -40,36 +40,8 @@ async function loadBatchesFromServer() {
 }
 /* =====================================================
    SAVE BATCHES + INACTIVE + TODOS TO SERVER
-   Every small action (mark Away, tick a To-Do, etc.) calls this,
-   each time sending the FULL current state. If two of these ran
-   at once, whichever network response came back later could
-   overwrite the server with an older snapshot — silently undoing
-   whatever the other save had just written. To stop that, only
-   ONE save is ever in flight: a save requested while one is
-   already running is queued and re-run (with whatever the state
-   is BY THEN) right after the current one finishes, instead of
-   firing in parallel.
 ===================================================== */
-let batchSaveInFlight = null;
-let batchSaveQueued = false;
-
-function saveBatchesToServer() {
-  if (batchSaveInFlight) {
-    batchSaveQueued = true;
-    return batchSaveInFlight;
-  }
-  batchSaveQueued = false;
-  batchSaveInFlight = doSaveBatchesToServer().finally(() => {
-    batchSaveInFlight = null;
-    if (batchSaveQueued) {
-      batchSaveQueued = false;
-      saveBatchesToServer();
-    }
-  });
-  return batchSaveInFlight;
-}
-
-async function doSaveBatchesToServer() {
+async function saveBatchesToServer() {
   try {
     const response = await fetch("/api/batches", {
       method: "PUT",
@@ -101,6 +73,7 @@ async function doSaveBatchesToServer() {
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
     localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
+    showSaveStatus(true);
     return true;
   } catch (error) {
     console.warn("Could not save to MongoDB API.", error);
@@ -108,8 +81,36 @@ async function doSaveBatchesToServer() {
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
     localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
-    alert("⚠️ बदलाव Server पर Save नहीं हो सका (Internet चेक करें) — अभी सिर्फ इसी Phone में सुरक्षित है, इंटरनेट आते ही दोबारा कोई भी बदलाव करके पक्का कर लें।");
+    showSaveStatus(false);
     return false;
+  }
+}
+/* =====================================================
+   VISIBLE SAVE STATUS — so a failed save is never silent.
+   Green = confirmed saved to Server just now (auto-hides).
+   Red = Server save failed, stays on screen until the next
+   successful save.
+===================================================== */
+function showSaveStatus(ok) {
+  let el = document.getElementById("saveStatusBadge");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "saveStatusBadge";
+    el.style.cssText = "position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9999;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2);color:#fff;";
+    document.body.appendChild(el);
+  }
+  if (ok) {
+    el.style.background = "#2e7d32";
+    el.textContent = "✅ Server पर Save हो गया (" + new Date().toLocaleTimeString("hi-IN") + ")";
+    el.style.display = "block";
+    clearTimeout(window._saveStatusTimer);
+    window._saveStatusTimer = setTimeout(() => {
+      el.style.display = "none";
+    }, 3000);
+  } else {
+    el.style.background = "#c62828";
+    el.textContent = "❌ Server पर Save नहीं हो सका — Internet चेक करें";
+    el.style.display = "block";
   }
 }
 /* =====================================================
@@ -117,23 +118,4 @@ async function doSaveBatchesToServer() {
 ===================================================== */
 window.addEventListener("load", async () => {
   await loadBatchesFromServer();
-});
-/* =====================================================
-   WARN BEFORE LEAVING WHILE A SAVE IS STILL IN FLIGHT
-   Temporary Away, To-Do और Move जैसे actions saveData() को बिना
-   await किए call करते हैं ताकि UI तुरंत update दिखे — लेकिन इसका
-   मतलब है कि Server को असली PUT request पूरी होने में अभी कुछ
-   सौ milliseconds लग सकते हैं। अगर ठीक उसी बीच में browser को
-   Refresh/Close कर दिया जाए, तो वो PUT request बीच में ही cancel
-   हो जाती है, Save कभी होता ही नहीं, और अगली बार Home load होने
-   पर पुराना (बिना-बदलाव वाला) data वापस दिख जाता है — असल में यही
-   वो bug था। अब जब तक कोई Save चल रहा है (या दोबारा चलने वाला है),
-   Refresh/Close करने पर Browser अपनी खुद की "बदलाव Save नहीं हुए,
-   फिर भी जाना है?" वाली चेतावनी दिखाएगा।
-===================================================== */
-window.addEventListener("beforeunload", (event) => {
-  if (batchSaveInFlight || batchSaveQueued) {
-    event.preventDefault();
-    event.returnValue = "";
-  }
 });

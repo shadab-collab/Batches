@@ -89,16 +89,9 @@ function saveData() {
   localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
   localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
   localStorage.setItem("todosData", JSON.stringify(todos));
-  /*
-       यह Promise लौटाना ज़रूरी है — इसी से पता चलता है कि
-       Server पर Save सच में पूरा हुआ या नहीं, ताकि जल्दी में
-       किया गया Refresh अभी-अभी हुए बदलाव को मिटा न दे (नीचे
-       09-api-server.js का beforeunload guard इसी पर निर्भर है)।
-    */
   if (window.API_MODE && typeof saveBatchesToServer === "function") {
-    return saveBatchesToServer();
+    saveBatchesToServer();
   }
-  return Promise.resolve(true);
 }
 /* =====================================================
    FORMAT TIME
