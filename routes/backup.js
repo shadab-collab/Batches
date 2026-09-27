@@ -428,19 +428,33 @@ router.get("/export-pdf", async (req, res) => {
       doc.moveDown(0.2);
 
       cycles.slice().reverse().forEach(c => {
-        ensureSpace(14);
+        doc.fontSize(8.5);
+        const cellTexts = [
+          FeeUtils.formatCycleRange(c),
+          `₹${ c.amountDue }`,
+          `₹${ c.paidSum }`,
+          c.charitySum > 0 ? `₹${ c.charitySum }` : "-",
+          `₹${ c.remaining }`,
+          c.status,
+          c.lastDate ? FeeUtils.formatDDMM(c.lastDate) : "-"
+        ];
+        const widths = [col.cycle, col.due, col.paid, col.charity, col.remaining, col.status, col.date];
+        // असली row-height नापें (लंबा Hindi Cycle टेक्स्ट कई बार 2 लाइनों में wrap होता
+        // है) — नहीं तो अगली row इसी के ऊपर छप जाती।
+        const rowHeight = Math.max(...cellTexts.map((t, i) => doc.heightOfString(t, { width: widths[i] })));
+        ensureSpace(rowHeight + 4);
         const rowY = doc.y;
         let cx = startX;
-        doc.fontSize(8.5).fillColor("#000");
-        doc.text(FeeUtils.formatCycleRange(c), cx, rowY, { width: col.cycle }); cx += col.cycle;
-        doc.text(`₹${ c.amountDue }`, cx, rowY, { width: col.due }); cx += col.due;
-        doc.text(`₹${ c.paidSum }`, cx, rowY, { width: col.paid }); cx += col.paid;
-        doc.text(c.charitySum > 0 ? `₹${ c.charitySum }` : "-", cx, rowY, { width: col.charity }); cx += col.charity;
-        doc.text(`₹${ c.remaining }`, cx, rowY, { width: col.remaining }); cx += col.remaining;
+        doc.fillColor("#000");
+        doc.text(cellTexts[0], cx, rowY, { width: widths[0] }); cx += widths[0];
+        doc.text(cellTexts[1], cx, rowY, { width: widths[1] }); cx += widths[1];
+        doc.text(cellTexts[2], cx, rowY, { width: widths[2] }); cx += widths[2];
+        doc.text(cellTexts[3], cx, rowY, { width: widths[3] }); cx += widths[3];
+        doc.text(cellTexts[4], cx, rowY, { width: widths[4] }); cx += widths[4];
         const statusColor = c.status === "Paid" ? "#2e7d32" : (c.status === "Partial" ? "#e65100" : (c.status === "Unpaid" ? "#c62828" : "#000"));
-        doc.fillColor(statusColor).text(c.status, cx, rowY, { width: col.status }); cx += col.status;
-        doc.fillColor("#000").text(c.lastDate ? FeeUtils.formatDDMM(c.lastDate) : "-", cx, rowY, { width: col.date });
-        doc.moveDown(0.4);
+        doc.fillColor(statusColor).text(cellTexts[5], cx, rowY, { width: widths[5] }); cx += widths[5];
+        doc.fillColor("#000").text(cellTexts[6], cx, rowY, { width: widths[6] });
+        doc.y = rowY + rowHeight + 4;
       });
     }
 
@@ -536,16 +550,22 @@ router.get("/export-pdf", async (req, res) => {
       doc.moveDown(0.2);
 
       sortedMonths.forEach(m => {
-        ensureSpace(14);
+        doc.fontSize(9);
+        const cellTexts = [
+          FeeUtils.formatCycleRange(m.cycle),
+          `₹${ m.due }`,
+          `₹${ m.paid }`,
+          m.charity > 0 ? `₹${ m.charity }` : "-",
+          `₹${ m.due - m.paid - m.charity }`
+        ];
+        const widths = [mcol.cycle, mcol.due, mcol.paid, mcol.charity, mcol.pending];
+        const rowHeight = Math.max(...cellTexts.map((t, i) => doc.heightOfString(t, { width: widths[i] })));
+        ensureSpace(rowHeight + 4);
         const rowY = doc.y;
         let cx = doc.page.margins.left;
-        doc.fontSize(9).fillColor("#000");
-        doc.text(FeeUtils.formatCycleRange(m.cycle), cx, rowY, { width: mcol.cycle }); cx += mcol.cycle;
-        doc.text(`₹${ m.due }`, cx, rowY, { width: mcol.due }); cx += mcol.due;
-        doc.text(`₹${ m.paid }`, cx, rowY, { width: mcol.paid }); cx += mcol.paid;
-        doc.text(m.charity > 0 ? `₹${ m.charity }` : "-", cx, rowY, { width: mcol.charity }); cx += mcol.charity;
-        doc.text(`₹${ m.due - m.paid - m.charity }`, cx, rowY, { width: mcol.pending });
-        doc.moveDown(0.4);
+        doc.fillColor("#000");
+        cellTexts.forEach((t, i) => { doc.text(t, cx, rowY, { width: widths[i] }); cx += widths[i]; });
+        doc.y = rowY + rowHeight + 4;
       });
     }
 
