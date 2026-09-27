@@ -79,7 +79,9 @@ function render() {
   });
   updateInactiveButton();
   updateAwayButton();
-  updateTodoBadge();
+  if (typeof updateTodoBadge === "function") {
+    updateTodoBadge();
+  }
   if (typeof refreshFeeStatusCache === "function") {
     refreshFeeStatusCache();
   }
