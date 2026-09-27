@@ -6,6 +6,7 @@ const { FeeProfile, FeeCycle, Payment } = require("../models/Fee");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
 const { profileForCycle, amountForProfile } = require("./fees");
+const { buildTimeline } = require("./dashboard");
 
 function requireMongo(req, res, next) {
   if (!isMongoReady()) {
@@ -205,22 +206,9 @@ async function buildBackupDataset() {
     ownerEntries.map(([, info]) => computeReadOnlyFeeState(info.ownerType, info.ownerKey))
   );
   const feeStateByKey = new Map();
-  const monthlyTotals = new Map();
 
   ownerEntries.forEach(([k], idx) => {
-    const state = states[idx];
-    feeStateByKey.set(k, state);
-    if (state.hasProfile) {
-      state.cycles.forEach(c => {
-        if (!monthlyTotals.has(c.cycleKey)) {
-          monthlyTotals.set(c.cycleKey, { cycleKey: c.cycleKey, cycle: c, due: 0, paid: 0, charity: 0 });
-        }
-        const m = monthlyTotals.get(c.cycleKey);
-        m.due += c.amountDue;
-        m.paid += c.paidSum;
-        m.charity += c.charitySum;
-      });
-    }
+    feeStateByKey.set(k, states[idx]);
   });
 
   const batchGroups = new Map();
@@ -231,14 +219,16 @@ async function buildBackupDataset() {
     batchGroups.get(row.batchLabel).push(row);
   });
 
-  const sortedMonths = Array.from(monthlyTotals.values()).sort((a, b) => a.cycleKey.localeCompare(b.cycleKey));
+  // Dashboard जैसा ही Growth data (जबसे data डाला गया, हर महीने की Final —
+  // Adjusted है तो Adjusted, नहीं तो असली — Collection और Student count)।
+  const timeline = await buildTimeline();
 
-  return { owners, feeStateByKey, batchGroups, sortedMonths };
+  return { owners, feeStateByKey, batchGroups, timeline };
 }
 
 router.get("/export-html", async (req, res) => {
   try {
-    const { owners, feeStateByKey, batchGroups, sortedMonths } = await buildBackupDataset();
+    const { owners, feeStateByKey, batchGroups, timeline } = await buildBackupDataset();
 
     const renderedOwnerKeys = new Set();
 
@@ -302,13 +292,11 @@ router.get("/export-html", async (req, res) => {
             `;
     }
 
-    const monthlyRows = sortedMonths.map(m => `
+    const growthRows = timeline.map(t => `
             <tr>
-                <td>${ esc(FeeUtils.formatCycleRange(m.cycle)) }</td>
-                <td>₹${ m.due }</td>
-                <td>₹${ m.paid }</td>
-                <td>${ m.charity > 0 ? "₹" + m.charity : "-" }</td>
-                <td>₹${ m.due - m.paid - m.charity }</td>
+                <td>${ esc(t.yearMonth) }</td>
+                <td>₹${ t.totalCollectionFinal }${ t.adjusted ? ` <span class="status-tag" style="background:#ab47bc;">Adjusted</span>` : "" }</td>
+                <td>${ t.activeStudentsFinal ?? "-" }</td>
             </tr>
         `).join("");
 
@@ -359,10 +347,10 @@ router.get("/export-html", async (req, res) => {
 
     ${ sharedHistoryHtml ? `<h2 class="section-heading">2. पुराने Records (अब किसी की Current Key नहीं)</h2>${ sharedHistoryHtml }` : "" }
 
-    <h2 class="section-heading">${ sharedHistoryHtml ? "3" : "2" }. Monthly Collection Summary</h2>
+    <h2 class="section-heading">${ sharedHistoryHtml ? "3" : "2" }. Growth — शुरू से अब तक</h2>
     <table class="fee-table">
-        <thead><tr><th>Cycle</th><th>कुल Due</th><th>कुल Paid</th><th>Charity</th><th>कुल Pending</th></tr></thead>
-        <tbody>${ monthlyRows || `<tr><td colspan="5" class="empty-note">कोई Cycle नहीं मिला।</td></tr>` }</tbody>
+        <thead><tr><th>Month</th><th>Collection (₹)</th><th>No. of Students</th></tr></thead>
+        <tbody>${ growthRows || `<tr><td colspan="3" class="empty-note">अभी कोई Growth Data नहीं है।</td></tr>` }</tbody>
     </table>
 
 </body>
@@ -386,7 +374,7 @@ router.get("/export-pdf", async (req, res) => {
   try {
     const path = require("path");
     const PDFDocument = require("pdfkit");
-    const { owners, feeStateByKey, batchGroups, sortedMonths } = await buildBackupDataset();
+    const { owners, feeStateByKey, batchGroups, timeline } = await buildBackupDataset();
 
     const generatedOn = FeeUtils.formatDDMM(FeeUtils.todayISO()) + " " + new Date().getFullYear();
     const doc = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
@@ -533,38 +521,36 @@ router.get("/export-pdf", async (req, res) => {
     }
 
     doc.addPage();
-    doc.font("Hindi-Bold").fontSize(13).text("Monthly Collection Summary", { underline: true });
+    doc.font("Hindi-Bold").fontSize(13).text("Growth — शुरू से अब तक", { underline: true });
     doc.font("Hindi");
     doc.moveDown(0.5);
-    if (!sortedMonths.length) {
-      doc.fontSize(9).fillColor("#888").text("कोई Cycle नहीं मिला।");
+    if (!timeline.length) {
+      doc.fontSize(9).fillColor("#888").text("अभी कोई Growth Data नहीं है।");
       doc.fillColor("#000");
     } else {
-      const mcol = { cycle: 170, due: 70, paid: 70, charity: 70, pending: 70 };
-      let mx = doc.x;
+      const gcol = { month: 120, collection: 160, students: 120 };
+      let gx = doc.x;
       doc.fontSize(9).fillColor("#000");
-      [["Cycle", mcol.cycle], ["कुल Due", mcol.due], ["कुल Paid", mcol.paid], ["Charity", mcol.charity], ["कुल Pending", mcol.pending]]
-        .forEach(([label, w]) => { doc.text(label, mx, doc.y, { width: w }); mx += w; });
+      [["Month", gcol.month], ["Collection (₹)", gcol.collection], ["No. of Students", gcol.students]]
+        .forEach(([label, w]) => { doc.text(label, gx, doc.y, { width: w }); gx += w; });
       doc.moveDown(0.3);
       doc.moveTo(doc.page.margins.left, doc.y).lineTo(doc.page.margins.left + pageWidth, doc.y).strokeColor("#ccc").stroke();
       doc.moveDown(0.2);
 
-      sortedMonths.forEach(m => {
+      timeline.forEach(t => {
         doc.fontSize(9);
         const cellTexts = [
-          FeeUtils.formatCycleRange(m.cycle),
-          `₹${ m.due }`,
-          `₹${ m.paid }`,
-          m.charity > 0 ? `₹${ m.charity }` : "-",
-          `₹${ m.due - m.paid - m.charity }`
+          t.yearMonth,
+          `₹${ t.totalCollectionFinal }${ t.adjusted ? "  (Adjusted)" : "" }`,
+          t.activeStudentsFinal ?? "-"
         ];
-        const widths = [mcol.cycle, mcol.due, mcol.paid, mcol.charity, mcol.pending];
-        const rowHeight = Math.max(...cellTexts.map((t, i) => doc.heightOfString(t, { width: widths[i] })));
+        const widths = [gcol.month, gcol.collection, gcol.students];
+        const rowHeight = Math.max(...cellTexts.map((txt, i) => doc.heightOfString(String(txt), { width: widths[i] })));
         ensureSpace(rowHeight + 4);
         const rowY = doc.y;
         let cx = doc.page.margins.left;
         doc.fillColor("#000");
-        cellTexts.forEach((t, i) => { doc.text(t, cx, rowY, { width: widths[i] }); cx += widths[i]; });
+        cellTexts.forEach((txt, i) => { doc.text(String(txt), cx, rowY, { width: widths[i] }); cx += widths[i]; });
         doc.y = rowY + rowHeight + 4;
       });
     }

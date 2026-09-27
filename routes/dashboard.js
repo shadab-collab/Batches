@@ -640,3 +640,4 @@ router.get("/range", async (req, res) => {
 
 
 module.exports = router;
+module.exports.buildTimeline = buildTimeline;
