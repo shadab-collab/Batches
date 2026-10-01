@@ -5,7 +5,7 @@ const { BatchData } = require("../models/BatchData");
 const { FeeProfile, FeeCycle, Payment } = require("../models/Fee");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
-const { profileForCycle, amountForProfile } = require("./fees");
+const { amountForProfile, expandCycles } = require("./fees");
 const { buildTimeline } = require("./dashboard");
 
 function requireMongo(req, res, next) {
@@ -35,15 +35,7 @@ async function computeReadOnlyFeeState(ownerType, ownerKey) {
     return { hasProfile: false };
   }
 
-  const dueDateType = profiles[0].dueDateType;
-  const joiningIso = profiles[0].joiningDate || profiles[0].effectiveFrom;
-  const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
-  const lastCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
-
-  let expectedCycles = [];
-  if (FeeUtils.compareISODate(firstCycle.cycleKey, lastCycle.cycleKey) <= 0) {
-    expectedCycles = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, lastCycle.cycleKey);
-  }
+  const expanded = expandCycles(profiles, FeeUtils.todayISO());
 
   const [existingCycles, payments] = await Promise.all([
     FeeCycle.find({ ownerType, ownerKey }).lean(),
@@ -64,15 +56,9 @@ async function computeReadOnlyFeeState(ownerType, ownerKey) {
   }
 
   let totalDue = 0;
-  const cycles = expectedCycles.map(c => {
+  const cycles = expanded.map(({ cycle: c, profile }) => {
     const existing = existingByKey.get(c.cycleKey);
-    let amountDue;
-    if (existing) {
-      amountDue = existing.amountDue;
-    } else {
-      const profile = profileForCycle(profiles, c.cycleKey);
-      amountDue = profile ? amountForProfile(profile) : 0;
-    }
+    const amountDue = existing ? existing.amountDue : amountForProfile(profile);
     const paidSum = paidByCycle[c.cycleKey] || 0;
     const charitySum = charityByCycle[c.cycleKey] || 0;
     const remaining = amountDue - paidSum - charitySum;

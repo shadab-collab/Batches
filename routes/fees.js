@@ -32,36 +32,58 @@ function amountForProfile(profile) {
   return profile.amount || 0;
 }
 
-/* Make sure a FeeCycle row exists for every cycle from the owner's first
-   cycle up to the current due cycle (or, if capDate is given — e.g. the
-   date a solo student went inactive — up to the last cycle that date
-   actually falls within). Never overwrites an existing row's amountDue
-   (that stays locked once created). */
+/* Walks every FeeProfile "version" for an owner, in order, and returns
+   every cycle that has genuinely come due across ALL of them — each
+   paired with the exact profile version that was active for it.
+   Each version uses its OWN dueDateType for its own stretch of time
+   (profile.effectiveFrom is already a valid cycleKey under that
+   version's dueDateType, since it was set that way when the version
+   was created) — so if the due-date is corrected from the 1st to the
+   15th partway through, the cycle grid itself switches at that point
+   too, instead of staying stuck on whichever dueDateType the very
+   first-ever profile had.
+   `capDate` (e.g. the date a solo student, or a whole family, went
+   inactive) stops EVERY version's stretch at the cycle that was
+   ALREADY due by that date — never the next, not-yet-due cycle that
+   merely covers that date — so an inactive child is never billed one
+   extra, not-yet-elapsed cycle just because the cutoff date happens to
+   fall inside its period. */
+function expandCycles(profiles, asOfIso, capDate) {
+  const result = [];
+
+  profiles.forEach(profile => {
+    const dueDateType = profile.dueDateType;
+    const segStart = profile.effectiveFrom;
+    let segEnd = (profile.effectiveTo !== null && profile.effectiveTo !== undefined)
+      ? profile.effectiveTo
+      : FeeUtils.getCurrentCycle(dueDateType, asOfIso).cycleKey;
+
+    if (capDate) {
+      const capCycleKey = FeeUtils.getCurrentCycle(dueDateType, capDate).cycleKey;
+      if (FeeUtils.compareISODate(capCycleKey, segEnd) < 0) {
+        segEnd = capCycleKey;
+      }
+    }
+
+    if (FeeUtils.compareISODate(segStart, segEnd) > 0) {
+      return;
+    }
+
+    FeeUtils.listCycles(dueDateType, segStart, segEnd).forEach(c => {
+      result.push({ cycle: c, profile });
+    });
+  });
+
+  return result;
+}
+
+/* Make sure a FeeCycle row exists for every cycle expandCycles finds.
+   Never overwrites an existing row's amountDue (that stays locked once
+   created). */
 async function ensureCycles(ownerType, ownerKey, profiles, capDate) {
-  const dueDateType = profiles[0].dueDateType;
-  const joiningIso = profiles[0].joiningDate || profiles[0].effectiveFrom;
+  const expanded = expandCycles(profiles, FeeUtils.todayISO(), capDate);
 
-  const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
-  let lastCycle = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
-
-  if (capDate) {
-    const capCycle = FeeUtils.getCycleContaining(dueDateType, capDate);
-    if (FeeUtils.compareISODate(capCycle.cycleKey, lastCycle.cycleKey) < 0) {
-      lastCycle = capCycle;
-    }
-  }
-
-  if (FeeUtils.compareISODate(firstCycle.cycleKey, lastCycle.cycleKey) > 0) {
-    return [];
-  }
-
-  const allCycles = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, lastCycle.cycleKey);
-
-  for (const c of allCycles) {
-    const profile = profileForCycle(profiles, c.cycleKey);
-    if (!profile) {
-      continue;
-    }
+  for (const { cycle: c, profile } of expanded) {
     await FeeCycle.findOneAndUpdate(
       { ownerType, ownerKey, cycleKey: c.cycleKey },
       {
@@ -79,7 +101,7 @@ async function ensureCycles(ownerType, ownerKey, profiles, capDate) {
     );
   }
 
-  return allCycles.map(c => c.cycleKey);
+  return expanded.map(e => e.cycle.cycleKey);
 }
 
 
@@ -525,21 +547,14 @@ router.post("/bulk-status", async (req, res) => {
         continue;
       }
 
-      const dueDateType = ownerProfiles[0].dueDateType;
-      const joiningIso = ownerProfiles[0].joiningDate || ownerProfiles[0].effectiveFrom;
-      const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
-      const currentCycle = FeeUtils.getCurrentCycle(dueDateType, today);
-
-      if (FeeUtils.compareISODate(firstCycle.cycleKey, currentCycle.cycleKey) > 0) {
+      const expanded = expandCycles(ownerProfiles, today);
+      if (!expanded.length) {
         continue;
       }
 
-      const cycleKeys = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, currentCycle.cycleKey)
-        .map(c => c.cycleKey);
+      const cycleKeys = expanded.map(e => e.cycle.cycleKey);
       const paidMap = paidByOwnerCycle[key] || {};
-
-      const currentProfile = profileForCycle(ownerProfiles, currentCycle.cycleKey);
-      const amountDue = currentProfile ? amountForProfile(currentProfile) : 0;
+      const amountDue = amountForProfile(expanded[expanded.length - 1].profile);
 
       let index = cycleKeys.length - 1;
       const currentPaid = (paidMap[cycleKeys[index]] || 0) > 0;
@@ -661,25 +676,15 @@ function monthAbbrev(cycleKey) {
   return MONTH_CODES[Number(cycleKey.split("-")[1]) - 1];
 }
 
-function pendingMonthCodes(dueDateType, joiningIso, profiles, paidByCycle, todayIso) {
-  const firstCycle = FeeUtils.getFirstCycleOnOrAfter(dueDateType, joiningIso);
-  const currentCycle = FeeUtils.getCurrentCycle(dueDateType, todayIso);
-  if (FeeUtils.compareISODate(firstCycle.cycleKey, currentCycle.cycleKey) > 0) {
-    return [];
-  }
-  const cycleKeys = FeeUtils.listCycles(dueDateType, firstCycle.cycleKey, currentCycle.cycleKey).map(c => c.cycleKey);
+function pendingMonthCodes(profiles, paidByCycle, todayIso) {
   const codes = [];
-  for (const key of cycleKeys) {
-    const profile = profileForCycle(profiles, key);
-    if (!profile) {
-      continue;
-    }
+  expandCycles(profiles, todayIso).forEach(({ cycle, profile }) => {
     const due = amountForProfile(profile);
-    const paid = paidByCycle[key] || 0;
+    const paid = paidByCycle[cycle.cycleKey] || 0;
     if (paid < due) {
-      codes.push(monthAbbrev(key));
+      codes.push(monthAbbrev(cycle.cycleKey));
     }
-  }
+  });
   return codes;
 }
 
@@ -754,9 +759,8 @@ router.get("/monthly-list", async (req, res) => {
         continue;
       }
 
-      const dueDateType = ownerProfiles[0].dueDateType;
-      const joiningIso = ownerProfiles[0].joiningDate || ownerProfiles[0].effectiveFrom;
-      const codes = pendingMonthCodes(dueDateType, joiningIso, ownerProfiles, paidByOwnerCycle[key] || {}, today);
+      const dueDateType = ownerProfiles[ownerProfiles.length - 1].dueDateType;
+      const codes = pendingMonthCodes(ownerProfiles, paidByOwnerCycle[key] || {}, today);
 
       const entry = { ...owner, monthCodes: codes };
       if (dueDateType === 1) {
@@ -791,7 +795,41 @@ router.get("/monthly-list", async (req, res) => {
 });
 
 
+/* =====================================================
+   DELETE A SINGLE FEE CYCLE
+   POST /api/fees/:ownerType/:ownerKey/cycle/:cycleKey/delete
+   For correcting a wrongly-generated cycle (e.g. from a dueDateType
+   mistake, or a since-inactive child) WITHOUT losing the owner's other
+   cycles/payments like /purge-owner would. Also removes any
+   payment/charity rows logged against that one cycle, so it doesn't
+   leave orphaned entries behind — the frontend warns the person before
+   calling this if the cycle had money recorded against it.
+   If the cycle is still genuinely "expected" (falls inside a still-open
+   profile's billed range), opening the Fee card again afterward will
+   recreate it — this only removes a cycle that should not exist at all.
+===================================================== */
+router.post("/:ownerType/:ownerKey/cycle/:cycleKey/delete", async (req, res) => {
+  const { ownerType, ownerKey, cycleKey } = req.params;
+
+  try {
+    const cycleResult = await FeeCycle.deleteOne({ ownerType, ownerKey, cycleKey });
+    const paymentResult = await Payment.deleteMany({ ownerType, ownerKey, cycleKey });
+
+    res.json({
+      success: true,
+      cycleDeleted: cycleResult.deletedCount > 0,
+      paymentsDeleted: paymentResult.deletedCount || 0
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Delete नहीं हो सका" });
+  }
+});
+
+
 module.exports = router;
 module.exports.getFeeStateForOwner = getFeeStateForOwner;
 module.exports.profileForCycle = profileForCycle;
 module.exports.amountForProfile = amountForProfile;
+module.exports.expandCycles = expandCycles;

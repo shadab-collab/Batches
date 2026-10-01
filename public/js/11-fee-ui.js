@@ -192,6 +192,7 @@ function renderFeeCard(data) {
                 <div class="fee-row-actions">
                     <button class="btn-light small-btn" onclick="openReceiptModal('${ c.cycleKey }')">Receipt बनाएं</button>
                     ${ c.remaining > 0 ? `<button class="btn-light small-btn" onclick="openCharityModal('${ c.cycleKey }')">Charity</button>` : "" }
+                    <button class="btn-light small-btn" onclick="deleteCycle('${ c.cycleKey }')">Delete</button>
                 </div>
             </div>
         `).join("");
@@ -230,6 +231,39 @@ function renderFeeCard(data) {
             ${ cycleRows || '<div class="empty">कोई cycle नहीं</div>' }
         </div>
     `;
+}
+
+/* =====================================================
+   DELETE CYCLE
+   For a wrongly-generated cycle (e.g. a dueDateType mistake, or a
+   cycle an inactive child should never have gotten) — removes just
+   this one cycle, not the owner's whole fee history.
+===================================================== */
+async function deleteCycle(cycleKey) {
+  const cycle = (currentFeeData.cycles || []).find(c => c.cycleKey === cycleKey);
+  if (!cycle) {
+    return;
+  }
+  const moneyWarning = (cycle.paidSum > 0 || cycle.charitySum > 0)
+    ? "\n\n⚠️ इस cycle में पहले से Payment/Charity दर्ज है — Delete करने पर वह भी हमेशा के लिए मिट जाएगी।"
+    : "";
+  if (!confirm(`${ FeeUtils.formatCycleRange(cycle) } वाली cycle हमेशा के लिए Delete करें?${ moneyWarning }`)) {
+    return;
+  }
+  const owner = currentFeeOwner;
+  try {
+    const res = await fetch(`/api/fees/${ owner.ownerType }/${ owner.ownerKey }/cycle/${ cycleKey }/delete`, {
+      method: "POST"
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Delete नहीं हो सका");
+      return;
+    }
+    await loadFeeCard(currentFeeStudent);
+  } catch (error) {
+    alert("Delete नहीं हो सका। इंटरनेट चेक करें।");
+  }
 }
 
 async function markAdmissionFeePaid() {
