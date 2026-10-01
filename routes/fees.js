@@ -759,8 +759,23 @@ router.get("/monthly-list", async (req, res) => {
         continue;
       }
 
-      const dueDateType = ownerProfiles[ownerProfiles.length - 1].dueDateType;
+      const activeProfile = ownerProfiles[ownerProfiles.length - 1];
+      const dueDateType = activeProfile.dueDateType;
       const codes = pendingMonthCodes(ownerProfiles, paidByOwnerCycle[key] || {}, today);
+
+      // यह List कैलेंडर महीने के हिसाब से छपती है, due date के हिसाब से
+      // नहीं — इसलिए 15-तारीख वाले owner का भी इस महीने का code महीने की
+      // 1 तारीख से ही दिखना चाहिए, भले ही असली Fee-card Cycle अभी 15
+      // तारीख को due ना हुई हो (Fee card वाला हिसाब यहां नहीं बदला)।
+      const todayParsed = FeeUtils.parseISODate(today);
+      const calendarCycle = FeeUtils.cycleForMonth(dueDateType, todayParsed.year, todayParsed.month);
+      const calendarCode = monthAbbrev(calendarCycle.cycleKey);
+      if (!codes.includes(calendarCode)) {
+        const paidSoFar = (paidByOwnerCycle[key] || {})[calendarCycle.cycleKey] || 0;
+        if (paidSoFar < amountForProfile(activeProfile)) {
+          codes.push(calendarCode);
+        }
+      }
 
       const entry = { ...owner, monthCodes: codes };
       if (dueDateType === 1) {
