@@ -48,15 +48,25 @@ function amountForProfile(profile) {
    merely covers that date — so an inactive child is never billed one
    extra, not-yet-elapsed cycle just because the cutoff date happens to
    fall inside its period. */
-function expandCycles(profiles, asOfIso, capDate) {
+function expandCycles(profiles, asOfIso, capDate, opts) {
   const result = [];
+  const useCalendarMonth = !!(opts && opts.useCalendarMonth);
 
   profiles.forEach(profile => {
     const dueDateType = profile.dueDateType;
     const segStart = profile.effectiveFrom;
-    let segEnd = (profile.effectiveTo !== null && profile.effectiveTo !== undefined)
-      ? profile.effectiveTo
-      : FeeUtils.getCurrentCycle(dueDateType, asOfIso).cycleKey;
+    let segEnd;
+    if (profile.effectiveTo !== null && profile.effectiveTo !== undefined) {
+      segEnd = profile.effectiveTo;
+    } else if (useCalendarMonth) {
+      // सिर्फ Monthly List के लिए: due date (1/15) का इंतज़ार किए बिना,
+      // इसी कैलेंडर महीने का cycle भी शामिल करो (असली Fee Card में अब भी
+      // सिर्फ due date पर ही cycle बनेगी — यह सिर्फ list-display के लिए है)।
+      const asOf = FeeUtils.parseISODate(asOfIso);
+      segEnd = FeeUtils.cycleForMonth(dueDateType, asOf.year, asOf.month).cycleKey;
+    } else {
+      segEnd = FeeUtils.getCurrentCycle(dueDateType, asOfIso).cycleKey;
+    }
 
     if (capDate) {
       const capCycleKey = FeeUtils.getCurrentCycle(dueDateType, capDate).cycleKey;
@@ -676,10 +686,11 @@ function monthAbbrev(cycleKey) {
   return MONTH_CODES[Number(cycleKey.split("-")[1]) - 1];
 }
 
-function pendingMonthCodes(profiles, paidByCycle, todayIso) {
+function pendingMonthCodes(profiles, paidByCycle, todayIso, existingAmountByCycle, opts) {
   const codes = [];
-  expandCycles(profiles, todayIso).forEach(({ cycle, profile }) => {
-    const due = amountForProfile(profile);
+  expandCycles(profiles, todayIso, null, opts).forEach(({ cycle, profile }) => {
+    const lockedAmount = existingAmountByCycle ? existingAmountByCycle[cycle.cycleKey] : undefined;
+    const due = (lockedAmount !== undefined) ? lockedAmount : amountForProfile(profile);
     const paid = paidByCycle[cycle.cycleKey] || 0;
     if (paid < due) {
       codes.push(monthAbbrev(cycle.cycleKey));
@@ -726,6 +737,7 @@ router.get("/monthly-list", async (req, res) => {
 
     const allProfiles = await FeeProfile.find({}).sort({ effectiveFrom: 1 }).lean();
     const allPayments = await Payment.find({}).lean();
+    const allCycles = await FeeCycle.find({}).lean();
 
     const profilesByOwner = {};
     allProfiles.forEach(p => {
@@ -745,6 +757,18 @@ router.get("/monthly-list", async (req, res) => {
       paidByOwnerCycle[key][pay.cycleKey] = (paidByOwnerCycle[key][pay.cycleKey] || 0) + pay.amount;
     });
 
+    // Cycle पहले से बन चुकी हो (जैसे advance payment के वक़्त) तो उसकी
+    // locked amountDue ही सही माने — ताकि पहले से Paid cycle कभी भी
+    // "pending" करके दुबारा ना दिख जाए।
+    const amountByOwnerCycle = {};
+    allCycles.forEach(c => {
+      const key = `${ c.ownerType }:${ c.ownerKey }`;
+      if (!amountByOwnerCycle[key]) {
+        amountByOwnerCycle[key] = {};
+      }
+      amountByOwnerCycle[key][c.cycleKey] = c.amountDue;
+    });
+
     const today = FeeUtils.todayISO();
     const due01 = [];
     const due15 = [];
@@ -759,23 +783,23 @@ router.get("/monthly-list", async (req, res) => {
         continue;
       }
 
-      const activeProfile = ownerProfiles[ownerProfiles.length - 1];
-      const dueDateType = activeProfile.dueDateType;
-      const codes = pendingMonthCodes(ownerProfiles, paidByOwnerCycle[key] || {}, today);
-
+      const dueDateType = ownerProfiles[ownerProfiles.length - 1].dueDateType;
       // यह List कैलेंडर महीने के हिसाब से छपती है, due date के हिसाब से
       // नहीं — इसलिए 15-तारीख वाले owner का भी इस महीने का code महीने की
       // 1 तारीख से ही दिखना चाहिए, भले ही असली Fee-card Cycle अभी 15
-      // तारीख को due ना हुई हो (Fee card वाला हिसाब यहां नहीं बदला)।
-      const todayParsed = FeeUtils.parseISODate(today);
-      const calendarCycle = FeeUtils.cycleForMonth(dueDateType, todayParsed.year, todayParsed.month);
-      const calendarCode = monthAbbrev(calendarCycle.cycleKey);
-      if (!codes.includes(calendarCode)) {
-        const paidSoFar = (paidByOwnerCycle[key] || {})[calendarCycle.cycleKey] || 0;
-        if (paidSoFar < amountForProfile(activeProfile)) {
-          codes.push(calendarCode);
-        }
-      }
+      // तारीख को due ना हुई हो (Fee card वाला हिसाब यहां नहीं बदला — वहां
+      // ensureCycles अब भी पुराने ढंग से ही due date पर cycle बनाता है)।
+      // साथ ही, जो cycle पहले से (advance में भी) पूरी Paid है वो लॉक हुई
+      // असली amountDue से check होती है, इसलिए दुबारा pending नहीं दिखती,
+      // और जिस owner का पहला cycle अभी आगे किसी और महीने में है उसके लिए
+      // अभी कोई code नहीं जुड़ता (नीचे bounds-check अपने आप संभाल लेता है)।
+      const codes = pendingMonthCodes(
+        ownerProfiles,
+        paidByOwnerCycle[key] || {},
+        today,
+        amountByOwnerCycle[key] || {},
+        { useCalendarMonth: true }
+      );
 
       const entry = { ...owner, monthCodes: codes };
       if (dueDateType === 1) {
