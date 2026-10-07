@@ -709,8 +709,8 @@ function pendingMonthCodes(profiles, paidByCycle, todayIso, existingAmountByCycl
    data — built to directly replace a hand-maintained paper
    list, so it needs zero manual re-encoding each month.
 ===================================================== */
-router.get("/monthly-list", async (req, res) => {
-  try {
+async function buildMonthlyListData() {
+  {
     const batchData = await BatchData.findOne({ key: "main" }).lean();
     const allStudents = [];
     ((batchData && batchData.batches) || []).forEach(b => allStudents.push(...(b.students || [])));
@@ -825,8 +825,14 @@ router.get("/monthly-list", async (req, res) => {
     sortOwnersAlphabetically(due15);
     sortOwnersAlphabetically(noProfile);
 
-    res.json({ success: true, due01, due15, noProfile });
+    return { due01, due15, noProfile };
+  }
+}
 
+router.get("/monthly-list", async (req, res) => {
+  try {
+    const data = await buildMonthlyListData();
+    res.json({ success: true, ...data });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Load नहीं हो सका" });
@@ -872,3 +878,4 @@ module.exports.getFeeStateForOwner = getFeeStateForOwner;
 module.exports.profileForCycle = profileForCycle;
 module.exports.amountForProfile = amountForProfile;
 module.exports.expandCycles = expandCycles;
+module.exports.buildMonthlyListData = buildMonthlyListData;

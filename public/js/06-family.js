@@ -149,6 +149,12 @@ function getFamilyCapDate(code) {
   if (activeMembers.length) {
     return null;
   }
+  // Temporarily Away भी उतना ही "family अभी खत्म नहीं हुई" का कारण है
+  // जितना एक active batch member — सिर्फ Inactive होने पर ही cap लगे।
+  const hasAwayMember = awayStudents.some(s => s.familyCode === code);
+  if (hasAwayMember) {
+    return null;
+  }
   const inactiveMembers = inactiveStudents.filter(s => s.familyCode === code);
   if (!inactiveMembers.length) {
     return null;

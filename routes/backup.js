@@ -5,7 +5,7 @@ const { BatchData } = require("../models/BatchData");
 const { FeeProfile, FeeCycle, Payment } = require("../models/Fee");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
-const { amountForProfile, expandCycles } = require("./fees");
+const { amountForProfile, expandCycles, buildMonthlyListData } = require("./fees");
 const { buildTimeline } = require("./dashboard");
 
 function requireMongo(req, res, next) {
@@ -215,6 +215,7 @@ async function buildBackupDataset() {
 router.get("/export-html", async (req, res) => {
   try {
     const { owners, feeStateByKey, batchGroups, timeline } = await buildBackupDataset();
+    const monthlyListData = await buildMonthlyListData();
 
     const renderedOwnerKeys = new Set();
 
@@ -278,6 +279,19 @@ router.get("/export-html", async (req, res) => {
             `;
     }
 
+    function monthlyListOwnerLines(owner, prefix) {
+      const codeSuffix = owner.monthCodes.length ? ` {${ owner.monthCodes.join(" ") }}` : "";
+      return owner.members.map(m => {
+        const displayName = (m.listCodeName && m.listCodeName.trim()) ? m.listCodeName : m.name;
+        return `${ prefix } ${ displayName.toUpperCase() }${ codeSuffix }`;
+      }).join("\n");
+    }
+    const monthlyListLines = [];
+    monthlyListData.due01.forEach(owner => monthlyListLines.push(monthlyListOwnerLines(owner, "01")));
+    monthlyListData.due15.forEach(owner => monthlyListLines.push(monthlyListOwnerLines(owner, "15")));
+    monthlyListData.noProfile.forEach(owner => monthlyListLines.push(monthlyListOwnerLines({ ...owner, monthCodes: [] }, "00")));
+    const monthlyListText = monthlyListLines.join("\n");
+
     const growthRows = timeline.map(t => `
             <tr>
                 <td>${ esc(t.yearMonth) }</td>
@@ -311,6 +325,7 @@ router.get("/export-html", async (req, res) => {
     .st-partial{color:#e65100;font-weight:bold;}
     .st-unpaid{color:#c62828;font-weight:bold;}
     .empty-note{font-size:12px;color:#888;font-style:italic;}
+    .monthly-list-pre{white-space:pre-wrap;font-family:monospace;font-size:13px;border:1px solid #ddd;border-radius:8px;padding:12px;margin-top:6px;}
     .print-btn-wrap{position:sticky;top:0;background:#fff;padding:10px 0;margin-bottom:10px;border-bottom:1px solid #ddd;z-index:5;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
     .print-btn{background:#2e7d32;color:#fff;border:none;padding:12px 20px;border-radius:8px;font-size:15px;font-weight:bold;}
     .download-btn{background:#1565c0;color:#fff;border:none;padding:12px 20px;border-radius:8px;font-size:15px;font-weight:bold;text-decoration:none;display:inline-block;}
@@ -339,6 +354,9 @@ router.get("/export-html", async (req, res) => {
         <tbody>${ growthRows || `<tr><td colspan="3" class="empty-note">अभी कोई Growth Data नहीं है।</td></tr>` }</tbody>
     </table>
 
+    <h2 class="section-heading">${ sharedHistoryHtml ? "4" : "3" }. Monthly Name List</h2>
+    <pre class="monthly-list-pre">${ esc(monthlyListText) }</pre>
+
 </body>
 </html>`;
 
@@ -361,6 +379,7 @@ router.get("/export-pdf", async (req, res) => {
     const path = require("path");
     const PDFDocument = require("pdfkit");
     const { owners, feeStateByKey, batchGroups, timeline } = await buildBackupDataset();
+    const monthlyListData = await buildMonthlyListData();
 
     const generatedOn = FeeUtils.formatDDMM(FeeUtils.todayISO()) + " " + new Date().getFullYear();
     const doc = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
@@ -568,6 +587,23 @@ router.get("/export-pdf", async (req, res) => {
       }));
       doc.y = drawBorderedTable(gStartX, [gcol.month, gcol.collection, gcol.students], ["Month", "Collection (₹)", "No. of Students"], gRows) + 4;
     }
+
+    doc.addPage();
+    doc.font("Hindi-Bold").fontSize(13).text("Monthly Name List", { underline: true });
+    doc.font("Hindi");
+    doc.moveDown(0.5);
+    function monthlyListOwnerLinesPdf(owner, prefix) {
+      const codeSuffix = owner.monthCodes.length ? ` {${ owner.monthCodes.join(" ") }}` : "";
+      return owner.members.map(m => {
+        const displayName = (m.listCodeName && m.listCodeName.trim()) ? m.listCodeName : m.name;
+        return `${ prefix } ${ displayName.toUpperCase() }${ codeSuffix }`;
+      }).join("\n");
+    }
+    const pdfMonthlyLines = [];
+    monthlyListData.due01.forEach(owner => pdfMonthlyLines.push(monthlyListOwnerLinesPdf(owner, "01")));
+    monthlyListData.due15.forEach(owner => pdfMonthlyLines.push(monthlyListOwnerLinesPdf(owner, "15")));
+    monthlyListData.noProfile.forEach(owner => pdfMonthlyLines.push(monthlyListOwnerLinesPdf({ ...owner, monthCodes: [] }, "00")));
+    doc.fontSize(9).text(pdfMonthlyLines.join("\n"), { width: pageWidth, lineGap: 2 });
 
     doc.end();
 
