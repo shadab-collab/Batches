@@ -148,6 +148,17 @@ function closeInactivePage() {
 /* =====================================================
    RENDER INACTIVE STUDENTS
 ===================================================== */
+let showExpelledStudents = false;
+
+function toggleShowExpelled() {
+  showExpelledStudents = !showExpelledStudents;
+  const btn = document.getElementById("toggleExpelledBtn");
+  if (btn) {
+    btn.textContent = showExpelledStudents ? "Expelled Students छुपाएं" : "Expelled Students भी दिखाएं";
+  }
+  renderInactiveStudents();
+}
+
 function renderInactiveStudents() {
   const list = document.getElementById("inactiveStudentList");
   if (!list) {
@@ -155,7 +166,7 @@ function renderInactiveStudents() {
   }
   const visibleStudents = inactiveStudents
     .map((student, index) => ({ student, index }))
-    .filter(entry => !entry.student.expelled);
+    .filter(entry => showExpelledStudents || !entry.student.expelled);
 
   if (!visibleStudents.length) {
     list.innerHTML = `
@@ -177,7 +188,7 @@ function renderInactiveStudents() {
                         <div
                             class="inactive-student-card"
                             onclick="openInactiveStudentProfile(${ entry.index })"
-                            style="cursor:pointer;"
+                            style="cursor:pointer;${ student.expelled ? "opacity:0.55;" : "" }"
                         >
 
                             <div
@@ -196,7 +207,7 @@ function renderInactiveStudents() {
                                 </strong>
 
                                 <span>
-                                    ${ familyText }
+                                    ${ familyText }${ student.expelled ? " · Expelled" : "" }
                                 </span>
 
                             </div>
@@ -237,6 +248,28 @@ function openInactiveStudentProfile(index) {
   document.getElementById("expellActionRow").style.display = "";
   document.getElementById("expelledBanner").style.display = student.expelled ? "" : "none";
 
+  const expellBtn = document.getElementById("expellActionBtn");
+  if (expellBtn) {
+    if (student.expelled) {
+      expellBtn.textContent = "Un-expel (वापस Inactive List में दिखाएं)";
+      expellBtn.setAttribute("onclick", "unexpelStudent()");
+    } else {
+      expellBtn.textContent = "Expell";
+      expellBtn.setAttribute("onclick", "expellStudent()");
+    }
+  }
+
+  const returnRow = document.getElementById("inactiveReturnRow");
+  const returnSelect = document.getElementById("inactiveReturnBatchSelect");
+  if (returnRow && returnSelect) {
+    if (student.expelled) {
+      returnRow.style.display = "none";
+    } else {
+      returnRow.style.display = "";
+      returnSelect.innerHTML = batches.map(b => `<option value="${ escapeHtml(b.id) }">${ escapeHtml(b.name) }</option>`).join("");
+    }
+  }
+
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
@@ -258,6 +291,60 @@ function openInactiveStudentProfile(index) {
   window.scrollTo(0, 0);
 }
 
+
+/* =====================================================
+   RETURN STUDENT FROM INACTIVE TO ACTIVE
+   Inactive (unlike Away) never remembers which batch a
+   student came from, so a batch is chosen explicitly here.
+   Family Code is left untouched either way.
+===================================================== */
+function returnStudentFromInactive() {
+  if (profileInactiveIndex === null) {
+    return;
+  }
+  const student = inactiveStudents[profileInactiveIndex];
+  if (!student) {
+    return;
+  }
+  const select = document.getElementById("inactiveReturnBatchSelect");
+  const targetBatch = batches.find(b => b.id === select.value);
+  if (!targetBatch) {
+    alert("पहले कोई Batch चुनें।");
+    return;
+  }
+  const ok = confirm(`${ student.name } को वापस "${ targetBatch.name }" में Active करना है?`);
+  if (!ok) {
+    return;
+  }
+  inactiveStudents.splice(profileInactiveIndex, 1);
+  student.active = true;
+  student.inactiveSince = "";
+  targetBatch.students.push(student);
+  saveData();
+  closeStudentProfilePage();
+  render();
+}
+
+/* =====================================================
+   UN-EXPEL STUDENT
+   Brings a wrongly-Expelled student back into the normal
+   Inactive list (still Inactive, not Active) — nothing about
+   their Fee/Payment history was ever touched by Expell, so
+   this alone makes everything reachable again.
+===================================================== */
+function unexpelStudent() {
+  if (profileInactiveIndex === null) {
+    return;
+  }
+  const student = inactiveStudents[profileInactiveIndex];
+  if (!student) {
+    return;
+  }
+  student.expelled = false;
+  saveData();
+  closeStudentProfilePage();
+  render();
+}
 
 /* =====================================================
    EXPELL STUDENT

@@ -887,6 +887,26 @@
             </div>
 
 
+            <!-- RETURN TO ACTIVE (inactive-student profiles only) -->
+
+            <div
+                class="family-actions"
+                id="inactiveReturnRow"
+                style="display:none;"
+            >
+
+                <select id="inactiveReturnBatchSelect"></select>
+
+                <button
+                    class="btn-main"
+                    onclick="returnStudentFromInactive()"
+                >
+                    वापस Active में लाएं
+                </button>
+
+            </div>
+
+
             <!-- EXPELLED BANNER (inactive-student profiles that were expelled) -->
 
             <div
@@ -908,6 +928,7 @@
 
                 <button
                     class="btn-danger"
+                    id="expellActionBtn"
                     onclick="expellStudent()"
                 >
                     Expell
@@ -1026,6 +1047,11 @@
             class="inactive-student-list"
         ></div>
 
+        <div style="text-align:center;padding:14px 0;">
+            <button class="btn-light" onclick="toggleShowExpelled()" id="toggleExpelledBtn">
+                Expelled Students भी दिखाएं
+            </button>
+        </div>
 
     </div>
 
