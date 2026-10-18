@@ -12,9 +12,15 @@ function recordFeeHistoryKey(student, ownerType, ownerKey) {
   if (!Array.isArray(student.feeHistoryKeys)) {
     student.feeHistoryKeys = [];
   }
-  const already = student.feeHistoryKeys.some(k => k.ownerType === ownerType && k.ownerKey === ownerKey);
-  if (!already) {
-    student.feeHistoryKeys.push({ ownerType, ownerKey });
+  const existing = student.feeHistoryKeys.find(k => k.ownerType === ownerType && k.ownerKey === ownerKey);
+  // यह तारीख उस owner key के "पुराना/Shared" हो जाने का freeze-point बनती
+  // है — उसके बाद वहां कोई नया Cycle नहीं दिखेगा, पुराने Cycle की late
+  // Payment फिर भी दिखती रहेगी (नीचे loadFeeHistorySharedSection देखें)।
+  const today = FeeUtils.todayISO();
+  if (existing) {
+    existing.frozenFrom = today;
+  } else {
+    student.feeHistoryKeys.push({ ownerType, ownerKey, frozenFrom: today });
   }
 }
 /* =====================================================

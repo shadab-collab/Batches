@@ -27,6 +27,7 @@ function render() {
                                     class="student-name"
                                     data-owner-type="${ student.familyCode ? "family" : "student" }"
                                     data-owner-key="${ escapeHtml(student.familyCode || student.id) }"
+                                    data-fee-free="${ !!student.feeFree }"
                                     onclick="
                                         event.stopPropagation();
                                         openStudentProfile(

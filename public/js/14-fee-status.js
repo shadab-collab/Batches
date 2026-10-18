@@ -117,6 +117,10 @@ function colorForStatus(entry) {
 
 function applyFeeStatusColors() {
   document.querySelectorAll("[data-owner-key]").forEach(el => {
+    if (el.dataset.feeFree === "true") {
+      el.style.color = FEE_STATUS_PAID_COLOR;
+      return;
+    }
     const ownerType = el.dataset.ownerType;
     const ownerKey = el.dataset.ownerKey;
     const entry = feeStatusCache[`${ ownerType }:${ ownerKey }`];

@@ -42,12 +42,11 @@ function amountForProfile(profile) {
    15th partway through, the cycle grid itself switches at that point
    too, instead of staying stuck on whichever dueDateType the very
    first-ever profile had.
-   `capDate` (e.g. the date a solo student, or a whole family, went
-   inactive) stops EVERY version's stretch at the cycle that was
-   ALREADY due by that date — never the next, not-yet-due cycle that
-   merely covers that date — so an inactive child is never billed one
-   extra, not-yet-elapsed cycle just because the cutoff date happens to
-   fall inside its period. */
+   `capDate` (e.g. the date a solo student/family went inactive, or the
+   date an owner key was recorded as "old/shared" after a Family
+   change) stops EVERY version's stretch at the cycle that was ALREADY
+   due by that date — never the next, not-yet-due cycle that merely
+   covers that date. */
 function expandCycles(profiles, asOfIso, capDate, opts) {
   const result = [];
   const useCalendarMonth = !!(opts && opts.useCalendarMonth);
@@ -132,11 +131,19 @@ async function getFeeStateForOwner(ownerType, ownerKey, capDate) {
     return { success: true, hasProfile: false };
   }
 
-  await ensureCycles(ownerType, ownerKey, profiles, capDate);
+  const expectedKeys = await ensureCycles(ownerType, ownerKey, profiles, capDate);
+  // capDate दिया गया हो तो सिर्फ उतनी ही cycles दिखाओ जो उस तारीख तक due
+  // हो चुकी थीं — भले ही DB में उससे आगे की कोई cycle पहले से मौजूद हो
+  // (जैसे उसी owner को किसी और — अब भी active — सदस्य ने बिना capDate के
+  // खोला हो, जिससे वो cycle पहले ही बन चुकी है)।
+  const allowedKeys = capDate ? new Set(expectedKeys) : null;
 
-  const cycles = await FeeCycle.find({ ownerType, ownerKey })
+  let cycles = await FeeCycle.find({ ownerType, ownerKey })
     .sort({ cycleKey: 1 })
     .lean();
+  if (allowedKeys) {
+    cycles = cycles.filter(c => allowedKeys.has(c.cycleKey));
+  }
 
   const payments = await Payment.find({ ownerType, ownerKey })
     .sort({ paymentDate: 1, createdAt: 1 })
@@ -784,15 +791,6 @@ async function buildMonthlyListData() {
       }
 
       const dueDateType = ownerProfiles[ownerProfiles.length - 1].dueDateType;
-      // यह List कैलेंडर महीने के हिसाब से छपती है, due date के हिसाब से
-      // नहीं — इसलिए 15-तारीख वाले owner का भी इस महीने का code महीने की
-      // 1 तारीख से ही दिखना चाहिए, भले ही असली Fee-card Cycle अभी 15
-      // तारीख को due ना हुई हो (Fee card वाला हिसाब यहां नहीं बदला — वहां
-      // ensureCycles अब भी पुराने ढंग से ही due date पर cycle बनाता है)।
-      // साथ ही, जो cycle पहले से (advance में भी) पूरी Paid है वो लॉक हुई
-      // असली amountDue से check होती है, इसलिए दुबारा pending नहीं दिखती,
-      // और जिस owner का पहला cycle अभी आगे किसी और महीने में है उसके लिए
-      // अभी कोई code नहीं जुड़ता (नीचे bounds-check अपने आप संभाल लेता है)।
       const codes = pendingMonthCodes(
         ownerProfiles,
         paidByOwnerCycle[key] || {},
@@ -843,15 +841,11 @@ router.get("/monthly-list", async (req, res) => {
 /* =====================================================
    DELETE A SINGLE FEE CYCLE
    POST /api/fees/:ownerType/:ownerKey/cycle/:cycleKey/delete
-   For correcting a wrongly-generated cycle (e.g. from a dueDateType
-   mistake, or a since-inactive child) WITHOUT losing the owner's other
-   cycles/payments like /purge-owner would. Also removes any
+   For correcting a wrongly-generated cycle WITHOUT losing the owner's
+   other cycles/payments like /purge-owner would. Also removes any
    payment/charity rows logged against that one cycle, so it doesn't
    leave orphaned entries behind — the frontend warns the person before
    calling this if the cycle had money recorded against it.
-   If the cycle is still genuinely "expected" (falls inside a still-open
-   profile's billed range), opening the Fee card again afterward will
-   recreate it — this only removes a cycle that should not exist at all.
 ===================================================== */
 router.post("/:ownerType/:ownerKey/cycle/:cycleKey/delete", async (req, res) => {
   const { ownerType, ownerKey, cycleKey } = req.params;

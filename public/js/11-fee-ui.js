@@ -93,7 +93,12 @@ async function loadFeeHistorySharedSection(student, currentOwner) {
   const blocks = [];
   for (const key of historyKeys) {
     try {
-      const res = await fetch(`/api/fees/${ key.ownerType }/${ key.ownerKey }`);
+      // frozenFrom = जब यह key "पुराना/Shared" बनी थी (family से हटना, आदि) —
+      // उसके बाद का कोई नया cycle यहां नहीं आना चाहिए; पुराने cycle की
+      // बाद में आई हुई Payment फिर भी ठीक से दिखेगी (cycle खुद उतना ही
+      // पुराना रहता है, सिर्फ उसकी Payment देर से आती है)।
+      const capParam = key.frozenFrom ? `?capDate=${ encodeURIComponent(key.frozenFrom) }` : "";
+      const res = await fetch(`/api/fees/${ key.ownerType }/${ key.ownerKey }${ capParam }`);
       const data = await res.json();
       if (!data.success || !data.hasProfile) {
         continue;
@@ -239,8 +244,11 @@ function renderFeeCard(data) {
 /* =====================================================
    DELETE CYCLE
    For a wrongly-generated cycle (e.g. a dueDateType mistake, or a
-   cycle an inactive child should never have gotten) — removes just
-   this one cycle, not the owner's whole fee history.
+   cycle that should never have been created) — removes just this one
+   cycle, not the owner's whole fee history. Owner/cycle details are
+   passed in explicitly so this also works from the Shared/Old Fee
+   Records block, which can point at a different owner than the one
+   currently open.
 ===================================================== */
 async function deleteCycle(ownerType, ownerKey, cycleKey, rangeLabel, paidSum, charitySum) {
   const moneyWarning = (paidSum > 0 || charitySum > 0)
@@ -433,18 +441,27 @@ function openFeeSetupModal() {
         </div>
         ` : "" }
 
-        ${ hasProfile ? `
+        ${ hasProfile ? (() => {
+      const dueDateType = profile.dueDateType;
+      const curCyc = FeeUtils.getCurrentCycle(dueDateType, FeeUtils.todayISO());
+      const curParsed = FeeUtils.parseISODate(curCyc.cycleKey);
+      const afterCur = FeeUtils.nextMonth(curParsed.year, curParsed.month);
+      const nextCyc = FeeUtils.cycleForMonth(dueDateType, afterCur.year, afterCur.month);
+      const curLabel = FeeUtils.formatCycleRange(curCyc);
+      const nextLabel = FeeUtils.formatCycleRange(nextCyc);
+      return `
         <div class="field">
             <label>नया Amount कब से लागू हो?</label>
             <select id="feeApplyFromSelect">
-                <option value="next">अगले Cycle से (मौजूदा Cycle नहीं बदलेगी) — सामान्य तरीका</option>
-                <option value="current">इसी चल रहे Cycle से (मौजूदा Cycle का Amount भी अभी अपडेट होगा)</option>
+                <option value="next">अगले Cycle से (${ nextLabel }) — मौजूदा Cycle नहीं बदलेगी — सामान्य तरीका</option>
+                <option value="current">इसी चल रहे Cycle से (${ curLabel }) — मौजूदा Cycle का Amount भी अभी अपडेट होगा</option>
             </select>
             <div class="empty" style="text-align:left;padding:4px 0;">
                 किसी Family में सदस्य कटने/जुड़ने पर सही Cycle में सही Amount के लिए यहां से चुनें।
             </div>
         </div>
-        ` : `
+        `;
+    })() : `
         <div class="empty" style="margin-top:8px;">
             पहली Fee ऊपर दी गई Joining Date के हिसाब से तय Cycle से लागू होगी।
         </div>
