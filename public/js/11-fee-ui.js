@@ -108,6 +108,14 @@ async function loadFeeHistorySharedSection(student, currentOwner) {
       const tagLabel = key.ownerType === "family"
         ? `🔗 पुराना/Shared Family Record (Code: ${ escapeHtml(key.ownerKey) })`
         : `🔗 पुराना Individual Record`;
+      const freezeFieldId = `freezeDate_${ key.ownerType }_${ key.ownerKey }`;
+      const freezeControl = `
+                <div class="fee-row-sub" style="margin-bottom:8px;">
+                    Freeze Date (जहां से यह Record पुराना माना जाए — उसके बाद कोई नया Cycle नहीं बनेगा):
+                    <input type="date" id="${ freezeFieldId }" value="${ key.frozenFrom || "" }">
+                    <button class="btn-light small-btn" onclick="setHistoryKeyFreezeDate('${ key.ownerType }', '${ key.ownerKey }', document.getElementById('${ freezeFieldId }').value)">Save</button>
+                    ${ !key.frozenFrom ? `<div style="color:#c62828;font-size:12px;margin-top:3px;">⚠️ अभी कोई Freeze Date सेट नहीं है, इसलिए यह Record अभी भी नए Cycle बनाता रहेगा — ऊपर तारीख सेट करें।</div>` : "" }
+                </div>`;
 
       const cycleRows = data.cycles.slice().reverse().map(c => `
                 <div class="fee-row">
@@ -131,6 +139,7 @@ async function loadFeeHistorySharedSection(student, currentOwner) {
                     <div style="font-size:13px;color:#666;margin-bottom:8px;">
                         कुल दर्ज राशि: ₹${ totalRecorded }
                     </div>
+                    ${ freezeControl }
                     ${ data.totalDue > 0 ? `<button class="btn-light small-btn" style="margin-bottom:10px;" onclick="openPaymentModalForOwner('${ key.ownerType }', '${ key.ownerKey }')">इस पुराने Record में Payment दर्ज करें</button>` : "" }
                     ${ cycleRows }
                 </div>
@@ -239,6 +248,27 @@ function renderFeeCard(data) {
             ${ cycleRows || '<div class="empty">कोई cycle नहीं</div>' }
         </div>
     `;
+}
+
+/* =====================================================
+   SET FREEZE DATE ON AN OLD/SHARED RECORD
+   पुराने (इस feature से पहले बने) Records में frozenFrom खाली होता है,
+   इसलिए वो अब भी बिना रुके नए Cycle बनाते रहते हैं — यहां से सही तारीख
+   सेट करने पर वो भी बाकी नए Records जैसे ही Freeze हो जाते हैं।
+===================================================== */
+function setHistoryKeyFreezeDate(ownerType, ownerKey, newDate) {
+  if (!newDate) {
+    alert("पहले कोई तारीख चुनें।");
+    return;
+  }
+  const student = currentFeeStudent;
+  const entry = (student.feeHistoryKeys || []).find(k => k.ownerType === ownerType && k.ownerKey === ownerKey);
+  if (!entry) {
+    return;
+  }
+  entry.frozenFrom = newDate;
+  saveData();
+  loadFeeCard(currentFeeStudent);
 }
 
 /* =====================================================
