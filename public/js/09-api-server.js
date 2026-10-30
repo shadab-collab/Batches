@@ -24,11 +24,13 @@ async function loadBatchesFromServer() {
     inactiveStudents = Array.isArray(data.inactiveStudents) ? data.inactiveStudents : [];
     awayStudents = Array.isArray(data.awayStudents) ? data.awayStudents : [];
     todos = Array.isArray(data.todos) ? data.todos : [];
+    holidays = Array.isArray(data.holidays) ? data.holidays : [];
     normalizeAllData();
     localStorage.setItem("batchManagerData", JSON.stringify(batches));
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
     localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
+    localStorage.setItem("holidaysData", JSON.stringify(holidays));
     render();
     return true;
   } catch (error) {
@@ -50,7 +52,8 @@ async function saveBatchesToServer() {
         batches: batches,
         inactiveStudents: inactiveStudents,
         awayStudents: awayStudents,
-        todos: todos
+        todos: todos,
+        holidays: holidays
       })
     });
     if (!response.ok) {
@@ -69,10 +72,14 @@ async function saveBatchesToServer() {
     if (Array.isArray(data.todos)) {
       todos = data.todos;
     }
+    if (Array.isArray(data.holidays)) {
+      holidays = data.holidays;
+    }
     localStorage.setItem("batchManagerData", JSON.stringify(batches));
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
     localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
+    localStorage.setItem("holidaysData", JSON.stringify(holidays));
     showSaveStatus(true);
     return true;
   } catch (error) {
@@ -81,6 +88,7 @@ async function saveBatchesToServer() {
     localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
     localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
     localStorage.setItem("todosData", JSON.stringify(todos));
+    localStorage.setItem("holidaysData", JSON.stringify(holidays));
     showSaveStatus(false);
     return false;
   }

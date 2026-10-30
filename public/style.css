@@ -1298,148 +1298,6 @@ button{
 
 
 /* =====================================================
-   ATTENDANCE CALENDAR TEMPLATE (WhatsApp image export)
-===================================================== */
-
-.calendar-paper{
-    width:680px;
-    background:#ffffff;
-    padding:40px 42px;
-    font-family:Arial, Helvetica, sans-serif;
-    color:#1a1a1a;
-    box-sizing:border-box
-}
-
-.calendar-header{
-    text-align:center;
-    font-size:24px;
-    font-weight:800;
-    border:2px solid #222;
-    border-radius:16px;
-    padding:12px;
-    margin-bottom:20px
-}
-
-.calendar-meta{
-    text-align:center;
-    font-size:19px;
-    line-height:1.7;
-    margin-bottom:6px
-}
-
-.calendar-summary{
-    text-align:center;
-    font-size:15px;
-    color:#555;
-    margin-bottom:20px
-}
-
-.calendar-weekday-row{
-    display:grid;
-    grid-template-columns:repeat(7, 1fr);
-    margin-bottom:8px
-}
-
-.calendar-weekday-cell{
-    text-align:center;
-    font-weight:700;
-    font-size:14px;
-    color:#777
-}
-
-.calendar-days-grid{
-    display:grid;
-    grid-template-columns:repeat(7, 1fr);
-    gap:6px;
-    margin-bottom:22px
-}
-
-.calendar-day-cell{
-    aspect-ratio:1;
-    border-radius:10px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    background:#fafafa
-}
-
-.calendar-day-cell.blank{
-    background:transparent
-}
-
-.calendar-day-cell.muted{
-    background:#f5f5f5;
-    color:#ccc
-}
-
-.calendar-day-cell.present{
-    background:#e6f7ec
-}
-
-.calendar-day-cell.absent{
-    background:#fde8e8
-}
-
-.calendar-day-cell.holiday{
-    background:#f1f1f1
-}
-
-.calendar-mark{
-    font-size:18px;
-    font-weight:800;
-    line-height:1
-}
-
-.calendar-day-cell.present .calendar-mark{
-    color:#1e8e3e
-}
-
-.calendar-day-cell.absent .calendar-mark{
-    color:#c0392b
-}
-
-.calendar-day-cell.holiday .calendar-mark{
-    color:#999;
-    font-size:13px
-}
-
-.calendar-date-num{
-    font-size:13px;
-    color:#555;
-    margin-top:2px
-}
-
-.calendar-legend{
-    display:flex;
-    justify-content:center;
-    gap:18px;
-    font-size:13px;
-    color:#555;
-    margin-bottom:18px
-}
-
-.calendar-legend-dot{
-    display:inline-block;
-    width:10px;
-    height:10px;
-    border-radius:50%;
-    margin-right:5px
-}
-
-.calendar-legend-dot.present{ background:#1e8e3e }
-.calendar-legend-dot.absent{ background:#c0392b }
-.calendar-legend-dot.holiday{ background:#999 }
-
-.calendar-footer{
-    text-align:center;
-    font-size:18px;
-    padding-top:14px;
-    border-top:2px solid #222
-}
-
-
-/* =====================================================
    ASSESSMENT SUMMARY (in student profile, like the Fee card)
 ===================================================== */
 
@@ -1484,4 +1342,327 @@ button{
 .dashboard-fee-type{
     color:#999;
     font-size:11px
+}
+
+
+/* =====================================================
+   ATTENDANCE PAGE (swipe to mark) + profile summary + monthly calendar
+===================================================== */
+
+#attendancePage{
+    display:none;
+    min-height:100vh;
+    background:#f3f5f8
+}
+
+.att-datebar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px
+}
+
+.att-datebar input{
+    padding:8px 10px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:15px
+}
+
+#attDateInfo{
+    font-size:13px;
+    color:#555
+}
+
+.att-hint{
+    font-size:12.5px;
+    color:#555;
+    background:#fff;
+    border:1px dashed #cfd6df;
+    border-radius:10px;
+    padding:8px 10px;
+    margin-bottom:12px
+}
+
+.att-batch{
+    background:#fff;
+    border:1px solid #ddd;
+    border-radius:12px;
+    margin-bottom:14px;
+    overflow:hidden
+}
+
+.att-batch-head{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px 12px;
+    background:#eef1f5
+}
+
+.att-batch-name{
+    font-weight:700;
+    font-size:15px
+}
+
+.att-batch-sub{
+    font-size:12px;
+    color:#666
+}
+
+.att-batch-head select{
+    padding:5px 8px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:12.5px
+}
+
+.att-holiday-banner{
+    background:#fff4e5;
+    color:#b45309;
+    padding:10px 12px;
+    font-size:13.5px;
+    font-weight:600
+}
+
+.att-row{
+    position:relative;
+    border-top:1px solid #eee;
+    overflow:hidden;
+    touch-action:pan-y;
+    -webkit-user-select:none;
+    user-select:none
+}
+
+.att-row::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:transparent
+}
+
+.att-row.swipe-right::before{
+    background:#c8e6c9
+}
+
+.att-row.swipe-left::before{
+    background:#ffcdd2
+}
+
+.att-row-inner{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:13px 12px;
+    background:#fff;
+    transition:transform .18s ease, background .2s;
+    will-change:transform
+}
+
+.att-row.dragging .att-row-inner{
+    transition:none
+}
+
+.att-row.present .att-row-inner{
+    background:#e8f5e9
+}
+
+.att-row.disabled .att-row-inner{
+    opacity:.55
+}
+
+.att-serial{
+    width:26px;
+    color:#888;
+    font-size:13px
+}
+
+.att-name{
+    flex:1;
+    font-size:16px;
+    font-weight:600
+}
+
+.att-tick{
+    color:#2e7d32;
+    font-weight:700;
+    font-size:18px;
+    min-width:18px;
+    text-align:center
+}
+
+.att-count{
+    min-width:34px;
+    text-align:center;
+    background:#1565c0;
+    color:#fff;
+    border-radius:999px;
+    font-weight:700;
+    font-size:15px;
+    padding:4px 10px
+}
+
+.att-count.bump{
+    animation:attBump .35s
+}
+
+@keyframes attBump{
+    0%{transform:scale(1)}
+    50%{transform:scale(1.35)}
+    100%{transform:scale(1)}
+}
+
+.att-holiday-box{
+    background:#fff;
+    border:1px solid #ddd;
+    border-radius:12px;
+    padding:12px;
+    margin-top:6px
+}
+
+.att-holiday-title{
+    font-weight:700;
+    margin-bottom:8px
+}
+
+.att-holiday-add{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:8px
+}
+
+.att-holiday-add input{
+    padding:7px 9px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:14px
+}
+
+.att-holiday-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:6px 0;
+    border-top:1px solid #eee;
+    font-size:14px
+}
+
+.att-holiday-item button{
+    border:none;
+    background:none;
+    color:#c62828;
+    font-size:16px;
+    cursor:pointer
+}
+
+.att-profile-head{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px
+}
+
+.att-profile-head input{
+    padding:6px 9px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    font-size:14px
+}
+
+.att-stat-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap
+}
+
+.att-stat{
+    flex:1;
+    min-width:90px;
+    text-align:center;
+    background:#f5f7fa;
+    border-radius:10px;
+    padding:8px 6px
+}
+
+.att-stat b{
+    display:block;
+    font-size:20px
+}
+
+.att-stat span{
+    font-size:12px;
+    color:#666
+}
+
+.att-stat.green b{ color:#2e7d32 }
+.att-stat.red b{ color:#c62828 }
+
+#attCalendarPaper{
+    background:#fff;
+    padding:14px
+}
+
+.att-cal-title{
+    text-align:center;
+    font-weight:700;
+    font-size:18px
+}
+
+.att-cal-sub{
+    text-align:center;
+    color:#555;
+    font-size:13px;
+    margin-bottom:10px
+}
+
+.att-cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px
+}
+
+.att-cal-dow{
+    text-align:center;
+    font-size:12px;
+    font-weight:700;
+    color:#555;
+    padding:4px 0
+}
+
+.att-cal-cell{
+    aspect-ratio:1/1;
+    border:1px solid #e3e3e3;
+    border-radius:8px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-size:12px;
+    color:#444
+}
+
+.att-cal-cell .mark{
+    font-size:20px;
+    font-weight:700;
+    line-height:1
+}
+
+.att-cal-cell.present{ background:#e8f5e9 }
+.att-cal-cell.present .mark{ color:#2e7d32 }
+.att-cal-cell.absent{ background:#ffebee }
+.att-cal-cell.absent .mark{ color:#c62828 }
+.att-cal-cell.holiday{ background:#eceff1; color:#78909c }
+.att-cal-cell.empty{ border:none }
+
+.att-cal-legend{
+    display:flex;
+    justify-content:center;
+    gap:14px;
+    font-size:12px;
+    margin-top:10px
 }

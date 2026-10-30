@@ -273,6 +273,7 @@ function openInactiveStudentProfile(index) {
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
+  loadAttendanceProfileBlock(null);
 
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";
@@ -540,6 +541,7 @@ function openAwayStudentProfile(index) {
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
+  loadAttendanceProfileBlock(null);
 
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";

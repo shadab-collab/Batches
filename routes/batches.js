@@ -30,14 +30,16 @@ router.get("/batches", async (req, res) => {
         batches: null,
         inactiveStudents: [],
         awayStudents: [],
-        todos: []
+        todos: [],
+        holidays: []
       });
     }
     res.json({
       batches: record.batches || [],
       inactiveStudents: record.inactiveStudents || [],
       awayStudents: record.awayStudents || [],
-      todos: record.todos || []
+      todos: record.todos || [],
+      holidays: record.holidays || []
     });
   } catch (error) {
     console.error(error);
@@ -58,7 +60,7 @@ router.put("/batches", async (req, res) => {
     });
   }
   try {
-    const { batches, inactiveStudents, awayStudents, todos } = req.body;
+    const { batches, inactiveStudents, awayStudents, todos, holidays } = req.body;
     if (!Array.isArray(batches)) {
       return res.status(400).json({
         success: false,
@@ -71,7 +73,8 @@ router.put("/batches", async (req, res) => {
         batches,
         inactiveStudents: Array.isArray(inactiveStudents) ? inactiveStudents : [],
         awayStudents: Array.isArray(awayStudents) ? awayStudents : [],
-        todos: Array.isArray(todos) ? todos : []
+        todos: Array.isArray(todos) ? todos : [],
+        holidays: Array.isArray(holidays) ? holidays : []
       }
     }, {
       upsert: true,
@@ -83,7 +86,8 @@ router.put("/batches", async (req, res) => {
       batches: saved.batches || [],
       inactiveStudents: saved.inactiveStudents || [],
       awayStudents: saved.awayStudents || [],
-      todos: saved.todos || []
+      todos: saved.todos || [],
+      holidays: saved.holidays || []
     });
   } catch (error) {
     console.error(error);

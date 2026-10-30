@@ -65,6 +65,7 @@ function openStudentProfile(bi, si) {
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
+  loadAttendanceProfileBlock(student, batch);
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";
   document.querySelector(".header").style.display = "none";

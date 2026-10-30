@@ -92,6 +92,12 @@ const batchSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  // इस Batch में हफ़्ते के जिस दिन class नहीं लगती (0=Sunday ... 6=Saturday).
+  // Attendance पेज उस दिन इस Batch को मार्क करने लायक नहीं दिखाता।
+  weeklyHolidays: {
+    type: [Number],
+    default: []
+  },
   students: {
     type: [studentSchema],
     default: []
@@ -126,6 +132,12 @@ const batchDataSchema = new mongoose.Schema({
   // student (by id+name, kept even if that student later changes) or
   // marked for everyone ("all").
   todos: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
+  },
+  // त्योहार जैसी छुट्टियां — सभी Batch पर एक साथ लागू होती हैं,
+  // अलग से हर Batch में नहीं जोड़नी पड़तीं।
+  holidays: {
     type: [mongoose.Schema.Types.Mixed],
     default: []
   }

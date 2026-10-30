@@ -130,6 +130,7 @@ let batches = [];
 let inactiveStudents = [];
 let awayStudents = [];
 let todos = [];
+let holidays = [];
 let currentBatch = null;
 let profileBatchIndex = null;
 let profileStudentIndex = null;
@@ -228,6 +229,10 @@ function normalizeAllData() {
   if (!Array.isArray(todos)) {
     todos = [];
   }
+  if (!Array.isArray(holidays)) {
+    holidays = [];
+  }
+  holidays = holidays.filter(h => h && typeof h.date === "string" && h.date);
   todos = todos.filter(t => t && typeof t.text === "string" && t.text.trim());
   todos.forEach(t => {
     if (!t.id) {
@@ -248,6 +253,9 @@ function normalizeAllData() {
     }
     if (!batch.id) {
       batch.id = "B-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+    }
+    if (!Array.isArray(batch.weeklyHolidays)) {
+      batch.weeklyHolidays = [];
     }
     batch.students = batch.students.map(normalizeStudent).filter(student => student.name);
     /*

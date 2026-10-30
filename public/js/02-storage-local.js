@@ -52,12 +52,26 @@ if (savedVersion !== DATA_VERSION) {
     }
   }
   todos = oldTodos;
+  let oldHolidays = [];
+  const holidaysRaw = localStorage.getItem("holidaysData");
+  if (holidaysRaw) {
+    try {
+      const parsedHolidays = JSON.parse(holidaysRaw);
+      if (Array.isArray(parsedHolidays)) {
+        oldHolidays = parsedHolidays;
+      }
+    } catch (error) {
+      oldHolidays = [];
+    }
+  }
+  holidays = oldHolidays;
   normalizeAllData();
   localStorage.setItem("batchManagerDataVersion", DATA_VERSION);
   localStorage.setItem("batchManagerData", JSON.stringify(batches));
   localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
   localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
   localStorage.setItem("todosData", JSON.stringify(todos));
+  localStorage.setItem("holidaysData", JSON.stringify(holidays));
 } else {
   try {
     batches = JSON.parse(localStorage.getItem("batchManagerData")) || defaultBatches;
@@ -79,6 +93,11 @@ if (savedVersion !== DATA_VERSION) {
   } catch (error) {
     todos = [];
   }
+  try {
+    holidays = JSON.parse(localStorage.getItem("holidaysData")) || [];
+  } catch (error) {
+    holidays = [];
+  }
   normalizeAllData();
 }
 /* =====================================================
@@ -89,6 +108,7 @@ function saveData() {
   localStorage.setItem("inactiveStudentsData", JSON.stringify(inactiveStudents));
   localStorage.setItem("awayStudentsData", JSON.stringify(awayStudents));
   localStorage.setItem("todosData", JSON.stringify(todos));
+  localStorage.setItem("holidaysData", JSON.stringify(holidays));
   if (window.API_MODE && typeof saveBatchesToServer === "function") {
     saveBatchesToServer();
   }
