@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attendance</title>
+<link rel="stylesheet" href="style.css">
+<style>
+    /* ---------- toolbar ---------- */
+    .att-toolbar{
+        position:sticky;
+        top:0;
+        z-index:20;
+        background:#fff;
+        border-bottom:1px solid #ddd;
+        padding:10px 14px;
+        display:flex;
+        flex-wrap:wrap;
+        align-items:center;
+        gap:10px 18px
+    }
+
+    .att-back{
+        color:#1769aa;
+        text-decoration:none;
+        font-size:14px
+    }
+
+    .att-datebox{
+        display:flex;
+        align-items:center;
+        gap:6px
+    }
+
+    .att-datebox input[type=date]{
+        padding:7px 9px;
+        border:1px solid #ccc;
+        border-radius:8px;
+        font-size:15px
+    }
+
+    .att-datebox button{
+        border:1px solid #ccc;
+        background:#fff;
+        border-radius:8px;
+        padding:7px 11px;
+        font-size:15px;
+        cursor:pointer
+    }
+
+    .att-datebox button:disabled{
+        opacity:.4
+    }
+
+    #dayName{
+        font-size:13px;
+        color:#555
+    }
+
+    /* ---------- switch ---------- */
+    .att-modebar{
+        display:flex;
+        align-items:center;
+        gap:9px;
+        font-size:14px
+    }
+
+    .att-mode-label{
+        color:#888
+    }
+
+    .att-mode-label.on{
+        color:#222;
+        font-weight:700
+    }
+
+    .att-switch{
+        position:relative;
+        display:inline-block;
+        width:54px;
+        height:30px
+    }
+
+    .att-switch input{
+        opacity:0;
+        width:0;
+        height:0
+    }
+
+    .att-slider{
+        position:absolute;
+        inset:0;
+        background:#9aa5b1;
+        border-radius:30px;
+        transition:.2s;
+        cursor:pointer
+    }
+
+    .att-slider::before{
+        content:"";
+        position:absolute;
+        width:24px;
+        height:24px;
+        left:3px;
+        top:3px;
+        background:#fff;
+        border-radius:50%;
+        transition:.2s
+    }
+
+    .att-switch input:checked + .att-slider{
+        background:#2e7d32
+    }
+
+    .att-switch input:checked + .att-slider::before{
+        transform:translateX(24px)
+    }
+
+    /* ---------- batch cards: home जैसे ही, बस Manage वाला हिस्सा नहीं ---------- */
+    .att-card{
+        cursor:default
+    }
+
+    .att-card:active{
+        transform:none
+    }
+
+    .att-card .batch-head{
+        cursor:default
+    }
+
+    .att-card .batch-head::after{
+        content:none
+    }
+
+    .att-head-tools{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+        margin-top:7px;
+        font-size:13px;
+        color:#2e7d32;
+        font-weight:700
+    }
+
+    .att-all-btn{
+        border:1px solid #2e7d32;
+        background:#fff;
+        color:#2e7d32;
+        border-radius:999px;
+        padding:3px 10px;
+        font-size:12.5px;
+        font-weight:700;
+        cursor:pointer
+    }
+
+    .att-all-btn:active{
+        background:#e8f5e9
+    }
+
+    .att-holiday-banner{
+        background:#fff4e5;
+        color:#b45309;
+        font-size:12.5px;
+        font-weight:600;
+        text-align:center;
+        padding:7px 6px
+    }
+
+    /* ---------- student rows ---------- */
+    .att-row{
+        border-radius:6px
+    }
+
+    .att-row.present{
+        background:#e8f5e9
+    }
+
+    .att-name{
+        flex:1;
+        min-width:0
+    }
+
+    .att-count{
+        min-width:26px;
+        text-align:center;
+        background:#1565c0;
+        color:#fff;
+        border-radius:999px;
+        font-weight:700;
+        font-size:14px;
+        padding:2px 8px
+    }
+
+    .att-count.zero{
+        background:#b0bec5
+    }
+
+    .att-row.mark{
+        cursor:pointer;
+        min-height:46px;
+        -webkit-tap-highlight-color:transparent;
+        user-select:none;
+        -webkit-user-select:none
+    }
+
+    .att-row.mark.disabled{
+        opacity:.5;
+        cursor:not-allowed
+    }
+
+    .att-box{
+        flex:none;
+        width:28px;
+        height:28px;
+        border:2px solid #90a4ae;
+        border-radius:7px;
+        background:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:#fff;
+        font-size:18px;
+        font-weight:700;
+        line-height:1
+    }
+
+    .att-row.present .att-box{
+        background:#2e7d32;
+        border-color:#2e7d32
+    }
+
+    /* ---------- holiday settings ---------- */
+    .att-settings{
+        max-width:1400px;
+        margin:6px auto 40px;
+        padding:0 14px
+    }
+
+    .att-settings details{
+        background:#fff;
+        border:1px solid #ddd;
+        border-radius:12px;
+        padding:10px 14px
+    }
+
+    .att-settings summary{
+        font-weight:700;
+        cursor:pointer
+    }
+
+    .att-set-title{
+        font-weight:700;
+        margin:14px 0 6px
+    }
+
+    .att-weekly-row{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        padding:6px 0;
+        border-top:1px solid #eee;
+        font-size:14px
+    }
+
+    .att-weekly-row select,
+    .att-fest-add input{
+        padding:7px 9px;
+        border:1px solid #ccc;
+        border-radius:8px;
+        font-size:14px
+    }
+
+    .att-fest-add{
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-bottom:8px
+    }
+
+    .att-fest-add button{
+        border:0;
+        background:#1769aa;
+        color:#fff;
+        border-radius:8px;
+        padding:7px 14px;
+        font-size:14px;
+        cursor:pointer
+    }
+
+    .att-fest-item{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        padding:6px 0;
+        border-top:1px solid #eee;
+        font-size:14px
+    }
+
+    .att-fest-item button{
+        border:0;
+        background:none;
+        color:#c62828;
+        font-size:17px;
+        cursor:pointer
+    }
+
+    .att-note{
+        font-size:12px;
+        color:#777;
+        margin-top:6px
+    }
+
+    #status{
+        text-align:center;
+        color:#777;
+        padding:30px 10px
+    }
+</style>
+</head>
+<body>
+
+<div class="header">Attendance</div>
+
+<div class="att-toolbar">
+
+    <a class="att-back" href="/">← Batch Manager</a>
+
+    <div class="att-datebox">
+        <button id="prevDay" onclick="shiftDay(-1)">◀</button>
+        <input type="date" id="dateInput" onchange="onDateChange()">
+        <button id="nextDay" onclick="shiftDay(1)">▶</button>
+        <button id="todayBtn" onclick="goToday()">आज</button>
+        <span id="dayName"></span>
+    </div>
+
+    <div class="att-modebar">
+        <span class="att-mode-label on" id="lblCount">गिनती देखें</span>
+        <label class="att-switch">
+            <input type="checkbox" id="modeSwitch" onchange="onModeChange()">
+            <span class="att-slider"></span>
+        </label>
+        <span class="att-mode-label" id="lblMark">Attendance लगाएं</span>
+    </div>
+
+</div>
+
+<div id="status">लोड हो रहा है...</div>
+
+<div class="batch-grid" id="attGrid"></div>
+
+<div class="att-settings">
+    <details>
+        <summary>⚙️ छुट्टियां (साप्ताहिक + त्योहार)</summary>
+
+        <div class="att-set-title">हर Batch की साप्ताहिक छुट्टी</div>
+        <div id="weeklyBox"></div>
+
+        <div class="att-set-title">त्योहार की छुट्टियां (सभी Batch के लिए)</div>
+        <div class="att-fest-add">
+            <input type="date" id="festDate">
+            <input type="text" id="festLabel" placeholder="नाम (जैसे Diwali)">
+            <button onclick="addFestival()">जोड़ें</button>
+        </div>
+        <div id="festList"></div>
+
+        <div class="att-note">
+            छुट्टी वाले दिन उस Batch में Attendance नहीं लगती। Absent अलग से दर्ज नहीं होता —
+            गुज़रे हुए, छुट्टी के अलावा जिस दिन Present नहीं लगी वो Absent गिना जाता है।
+        </div>
+    </details>
+</div>
+
+<script>
+const WEEKDAYS = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
+
+let batches = [];
+let weeklyByBatch = {};      // batchKey -> 0..6
+let festivals = [];          // [{ date, label }]
+let selectedDate = "";
+let presentSet = new Set();  // चुनी हुई तारीख पर Present के studentId
+let monthCounts = {};        // studentId -> इस महीने की Present-गिनती
+let markMode = false;
+
+/* ---------- helpers ---------- */
+
+function esc(value) {
+  return String(value === undefined || value === null ? "" : value).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function pad(n) {
+  return String(n).padStart(2, "0");
+}
+
+function todayISO() {
+  const d = new Date();
+  return `${ d.getFullYear() }-${ pad(d.getMonth() + 1) }-${ pad(d.getDate()) }`;
+}
+
+function parseISO(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return { y, m, d };
+}
+
+function weekdayOf(iso) {
+  const { y, m, d } = parseISO(iso);
+  return new Date(y, m - 1, d).getDay();
+}
+
+function addDays(iso, n) {
+  const { y, m, d } = parseISO(iso);
+  const dt = new Date(y, m - 1, d + n);
+  return `${ dt.getFullYear() }-${ pad(dt.getMonth() + 1) }-${ pad(dt.getDate()) }`;
+}
+
+function fmtDate(iso) {
+  const { y, m, d } = parseISO(iso);
+  return `${ d }/${ m }/${ y }`;
+}
+
+function formatTime(t) {
+  if (!t) {
+    return "Time Set";
+  }
+  const [h, m] = t.split(":");
+  let hour = Number(h);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${ hour }:${ m } ${ ampm }`;
+}
+
+/* Batch की पहचान — मुख्य app की तरह batch.id (ना हो तो नाम) */
+function batchKey(batch) {
+  return batch.id || ("name:" + batch.name);
+}
+
+function holidayInfo(batch, iso) {
+  const fest = festivals.find(f => f.date === iso);
+  if (fest) {
+    return { label: fest.label ? `त्योहार की छुट्टी — ${ fest.label }` : "त्योहार की छुट्टी" };
+  }
+  const weekly = weeklyByBatch[batchKey(batch)];
+  if (weekly !== undefined && weekly === weekdayOf(iso)) {
+    return { label: `साप्ताहिक छुट्टी — ${ WEEKDAYS[weekly] }` };
+  }
+  return null;
+}
+
+async function postJSON(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error(data.message || "failed");
+  }
+  return data;
+}
+
+/* ---------- load ---------- */
+
+async function loadConfig() {
+  const res = await fetch("/api/attendance/config");
+  const data = await res.json();
+  weeklyByBatch = {};
+  (data.weekly || []).forEach(w => { weeklyByBatch[w.batchId] = w.day; });
+  festivals = (data.holidays || []).slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+async function loadDay() {
+  const date = selectedDate;
+  const ym = date.slice(0, 7);
+  const [onRes, cntRes] = await Promise.all([
+    fetch(`/api/attendance/on/${ date }`).then(r => r.json()),
+    fetch(`/api/attendance/month-counts/${ ym }`).then(r => r.json())
+  ]);
+  if (date !== selectedDate) {
+    return;
+  }
+  presentSet = new Set(onRes.success ? onRes.studentIds : []);
+  monthCounts = cntRes.success ? cntRes.counts : {};
+}
+
+async function init() {
+  const status = document.getElementById("status");
+  try {
+    const bRes = await fetch("/api/batches").then(r => r.json());
+    batches = Array.isArray(bRes.batches) ? bRes.batches : [];
+    await loadConfig();
+
+    selectedDate = todayISO();
+    const input = document.getElementById("dateInput");
+    input.max = selectedDate;
+    input.value = selectedDate;
+
+    await loadDay();
+    status.style.display = "none";
+    renderAll();
+  } catch (error) {
+    status.textContent = "लोड नहीं हो सका। इंटरनेट चेक करके पेज दुबारा खोलें।";
+  }
+}
+
+/* ---------- date + mode ---------- */
+
+async function changeDate(iso) {
+  selectedDate = iso;
+  document.getElementById("dateInput").value = iso;
+  try {
+    await loadDay();
+  } catch (error) {
+    alert("Attendance लोड नहीं हो सकी। इंटरनेट चेक करें।");
+  }
+  renderAll();
+}
+
+function onDateChange() {
+  const input = document.getElementById("dateInput");
+  const today = todayISO();
+  if (!input.value) {
+    input.value = selectedDate;
+    return;
+  }
+  if (input.value > today) {
+    alert("आगे की तारीख की Attendance नहीं लग सकती।");
+    input.value = selectedDate;
+    return;
+  }
+  changeDate(input.value);
+}
+
+function shiftDay(n) {
+  const next = addDays(selectedDate, n);
+  if (next > todayISO()) {
+    return;
+  }
+  changeDate(next);
+}
+
+function goToday() {
+  changeDate(todayISO());
+}
+
+function onModeChange() {
+  markMode = document.getElementById("modeSwitch").checked;
+  document.getElementById("lblCount").classList.toggle("on", !markMode);
+  document.getElementById("lblMark").classList.toggle("on", markMode);
+  renderGrid();
+}
+
+/* ---------- render ---------- */
+
+function renderAll() {
+  const today = todayISO();
+  document.getElementById("dayName").textContent = WEEKDAYS[weekdayOf(selectedDate)];
+  document.getElementById("nextDay").disabled = selectedDate >= today;
+  document.getElementById("todayBtn").disabled = selectedDate === today;
+  renderGrid();
+  renderSettings();
+}
+
+function rowHTML(batch, bi, student, si, holiday) {
+  const present = presentSet.has(student.id);
+  const count = monthCounts[student.id] || 0;
+  const name = `${ esc(student.name) }${ student.identity ? ` <span class="student-identity">(${ esc(student.identity) })</span>` : "" }`;
+
+  if (markMode) {
+    return `
+        <div class="student att-row mark ${ present ? "present" : "" } ${ holiday ? "disabled" : "" }"
+             data-act="toggle" data-bi="${ bi }" data-si="${ si }">
+            <span class="att-box">${ present ? "✓" : "" }</span>
+            <span class="serial">${ si + 1 }.</span>
+            <span class="att-name">${ name }</span>
+        </div>`;
+  }
+
+  return `
+        <div class="student att-row ${ present ? "present" : "" }">
+            <span class="serial">${ si + 1 }.</span>
+            <span class="att-name">${ name }</span>
+            <span class="att-count ${ count ? "" : "zero" }">${ count }</span>
+        </div>`;
+}
+
+function cardHTML(bi) {
+  const batch = batches[bi];
+  const students = batch.students || [];
+  const holiday = holidayInfo(batch, selectedDate);
+  const presentNow = students.filter(s => presentSet.has(s.id)).length;
+
+  const rows = students.map((s, si) => rowHTML(batch, bi, s, si, holiday)).join("")
+    || `<div class="empty">कोई Student नहीं</div>`;
+
+  const tools = (markMode && !holiday && students.length)
+    ? `<div class="att-head-tools">
+            <span>आज ${ presentNow }/${ students.length }</span>
+            <button class="att-all-btn" data-act="all" data-bi="${ bi }">सभी ✓</button>
+       </div>`
+    : "";
+
+  return `
+    <div class="batch att-card" data-bi="${ bi }">
+        <div class="batch-head">
+            <div class="batch-name">${ esc(batch.name) }</div>
+            <div class="batch-time">${ formatTime(batch.time) }</div>
+            ${ tools }
+        </div>
+        ${ holiday ? `<div class="att-holiday-banner">🎉 ${ esc(holiday.label) }</div>` : "" }
+        <div class="students">${ rows }</div>
+    </div>`;
+}
+
+function renderGrid() {
+  const grid = document.getElementById("attGrid");
+  if (!batches.length) {
+    grid.innerHTML = `<div class="empty">कोई Batch नहीं है।</div>`;
+    return;
+  }
+  grid.innerHTML = batches.map((b, bi) => cardHTML(bi)).join("");
+}
+
+function renderCard(bi) {
+  const card = document.querySelector(`.att-card[data-bi="${ bi }"]`);
+  if (card) {
+    card.outerHTML = cardHTML(bi);
+  }
+}
+
+/* ---------- mark / unmark ---------- */
+
+async function toggleStudent(bi, si) {
+  const batch = batches[bi];
+  const student = batch && batch.students[si];
+  if (!student || holidayInfo(batch, selectedDate)) {
+    return;
+  }
+  const date = selectedDate;
+  const sid = student.id;
+  const wasPresent = presentSet.has(sid);
+
+  // पहले screen बदलो (तुरंत दिखे), फिर server — fail हो तो वापस पलट दो
+  if (wasPresent) {
+    presentSet.delete(sid);
+    monthCounts[sid] = Math.max(0, (monthCounts[sid] || 1) - 1);
+  } else {
+    presentSet.add(sid);
+    monthCounts[sid] = (monthCounts[sid] || 0) + 1;
+  }
+  renderCard(bi);
+
+  try {
+    if (wasPresent) {
+      await postJSON("/api/attendance/unmark", { studentId: sid, date });
+    } else {
+      await postJSON("/api/attendance/mark", { studentId: sid, batchId: batchKey(batch), date });
+    }
+  } catch (error) {
+    if (date === selectedDate) {
+      if (wasPresent) {
+        presentSet.add(sid);
+        monthCounts[sid] = (monthCounts[sid] || 0) + 1;
+      } else {
+        presentSet.delete(sid);
+        monthCounts[sid] = Math.max(0, (monthCounts[sid] || 1) - 1);
+      }
+      renderCard(bi);
+    }
+    alert("Attendance save नहीं हो सकी। इंटरनेट चेक करें।");
+  }
+}
+
+async function markAll(bi) {
+  const batch = batches[bi];
+  if (!batch || holidayInfo(batch, selectedDate)) {
+    return;
+  }
+  const date = selectedDate;
+  const pending = (batch.students || []).filter(s => !presentSet.has(s.id));
+  if (!pending.length) {
+    return;
+  }
+
+  pending.forEach(s => {
+    presentSet.add(s.id);
+    monthCounts[s.id] = (monthCounts[s.id] || 0) + 1;
+  });
+  renderCard(bi);
+
+  try {
+    await postJSON("/api/attendance/mark-many", {
+      date,
+      items: pending.map(s => ({ studentId: s.id, batchId: batchKey(batch) }))
+    });
+  } catch (error) {
+    if (date === selectedDate) {
+      pending.forEach(s => {
+        presentSet.delete(s.id);
+        monthCounts[s.id] = Math.max(0, (monthCounts[s.id] || 1) - 1);
+      });
+      renderCard(bi);
+    }
+    alert("Attendance save नहीं हो सकी। इंटरनेट चेक करें।");
+  }
+}
+
+document.getElementById("attGrid").addEventListener("click", e => {
+  const target = e.target.closest("[data-act]");
+  if (!target) {
+    return;
+  }
+  const bi = Number(target.dataset.bi);
+  if (target.dataset.act === "all") {
+    markAll(bi);
+  } else if (target.dataset.act === "toggle") {
+    toggleStudent(bi, Number(target.dataset.si));
+  }
+});
+
+/* ---------- holiday settings ---------- */
+
+function renderSettings() {
+  const weeklyBox = document.getElementById("weeklyBox");
+  weeklyBox.innerHTML = batches.map((batch, bi) => {
+    const current = weeklyByBatch[batchKey(batch)];
+    const options = `<option value="">कोई नहीं</option>` + WEEKDAYS.map((name, i) =>
+      `<option value="${ i }" ${ current === i ? "selected" : "" }>${ name }</option>`
+    ).join("");
+    return `
+        <div class="att-weekly-row">
+            <span>${ esc(batch.name) } <span style="color:#888;">(${ formatTime(batch.time) })</span></span>
+            <select onchange="setWeekly(${ bi }, this.value)">${ options }</select>
+        </div>`;
+  }).join("");
+
+  const festList = document.getElementById("festList");
+  festList.innerHTML = festivals.length
+    ? festivals.map(f => `
+        <div class="att-fest-item">
+            <span>${ fmtDate(f.date) } (${ WEEKDAYS[weekdayOf(f.date)] })${ f.label ? " — " + esc(f.label) : "" }</span>
+            <button onclick="removeFestival('${ f.date }')">✕</button>
+        </div>`).join("")
+    : `<div class="att-note">अभी कोई त्योहार की छुट्टी नहीं जुड़ी।</div>`;
+}
+
+async function setWeekly(bi, value) {
+  const batch = batches[bi];
+  const key = batchKey(batch);
+  const day = value === "" ? null : Number(value);
+  try {
+    await postJSON("/api/attendance/config/weekly-holiday", { batchId: key, day });
+    if (day === null) {
+      delete weeklyByBatch[key];
+    } else {
+      weeklyByBatch[key] = day;
+    }
+    renderGrid();
+  } catch (error) {
+    alert("छुट्टी save नहीं हो सकी। इंटरनेट चेक करें।");
+    renderSettings();
+  }
+}
+
+async function addFestival() {
+  const dateEl = document.getElementById("festDate");
+  const labelEl = document.getElementById("festLabel");
+  const date = dateEl.value;
+  const label = labelEl.value.trim();
+  if (!date) {
+    alert("पहले छुट्टी की तारीख चुनें।");
+    return;
+  }
+  if (festivals.some(f => f.date === date)) {
+    alert("यह तारीख पहले से जुड़ी हुई है।");
+    return;
+  }
+  try {
+    await postJSON("/api/attendance/config/festival", { date, label });
+    festivals.push({ date, label });
+    festivals.sort((a, b) => (a.date < b.date ? -1 : 1));
+    dateEl.value = "";
+    labelEl.value = "";
+    renderGrid();
+    renderSettings();
+  } catch (error) {
+    alert("छुट्टी save नहीं हो सकी। इंटरनेट चेक करें।");
+  }
+}
+
+async function removeFestival(date) {
+  if (!confirm(`${ fmtDate(date) } की छुट्टी हटानी है?`)) {
+    return;
+  }
+  try {
+    await postJSON("/api/attendance/config/festival/remove", { date });
+    festivals = festivals.filter(f => f.date !== date);
+    renderGrid();
+    renderSettings();
+  } catch (error) {
+    alert("छुट्टी हटाई नहीं जा सकी। इंटरनेट चेक करें।");
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>

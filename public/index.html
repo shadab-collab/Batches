@@ -1127,55 +1127,6 @@
 
 
 <!-- =====================================================
-     ATTENDANCE PAGE
-===================================================== -->
-
-<div id="attendancePage">
-
-    <div class="student-profile-topbar">
-
-        <button
-            class="student-profile-back"
-            onclick="closeAttendancePage()"
-        >
-            ← Back
-        </button>
-
-        <div class="student-profile-heading">
-            Attendance
-        </div>
-
-    </div>
-
-    <div class="inactive-page-wrap">
-
-        <div class="att-datebar">
-            <input type="date" id="attDateInput" onchange="onAttendanceDateChange()">
-            <span id="attDateInfo"></span>
-        </div>
-
-        <div class="att-hint">
-            नाम को <b>दाएं (→)</b> swipe करें = Present &nbsp;|&nbsp; गलती हो तो <b>बाएं (←)</b> swipe करें = हटाएं
-        </div>
-
-        <div id="attendanceBatchList"></div>
-
-        <div class="att-holiday-box">
-            <div class="att-holiday-title">🎉 Festival Holidays (सभी Batch के लिए)</div>
-            <div class="att-holiday-add">
-                <input type="date" id="attHolidayDate">
-                <input type="text" id="attHolidayLabel" placeholder="नाम (जैसे Diwali)">
-                <button class="btn-main small-btn" onclick="addFestivalHoliday()">जोड़ें</button>
-            </div>
-            <div id="attHolidayList"></div>
-        </div>
-
-    </div>
-
-</div>
-
-
-<!-- =====================================================
      ATTENDANCE — MONTHLY CALENDAR OVERLAY
 ===================================================== -->
 
