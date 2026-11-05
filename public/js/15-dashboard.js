@@ -91,7 +91,13 @@ function switchDashboardView(view) {
    Adjustment layer below sits on top of it, never replacing it)
 ===================================================== */
 async function refreshDashboardSnapshotAndLoad() {
-  const activeStudentCount = batches.reduce((sum, b) => sum + b.students.length, 0) + awayStudents.length;
+  // Free (feeFree) बच्चे Active Students की गिनती में नहीं जुड़ते — उनसे
+  // कोई Fee नहीं आती, इसलिए Growth/Dashboard की गिनती सिर्फ Fee देने
+  // वाले बच्चों की रहती है।
+  const isFeePaying = student => !student.feeFree;
+  const activeStudentCount =
+    batches.reduce((sum, b) => sum + b.students.filter(isFeePaying).length, 0)
+    + awayStudents.filter(isFeePaying).length;
   const owners = collectFeeOwnersFromBatches();
 
   let totalMonthlyFeeCommitted = 0;
