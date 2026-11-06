@@ -143,7 +143,7 @@ router.post("/mark-many", async (req, res) => {
    छुट्टियों की सेटिंग
    GET  /api/attendance/config
    POST /api/attendance/config/weekly-holiday   { batchId, day | null }
-   POST /api/attendance/config/festival         { date, label }
+   POST /api/attendance/config/festival         { date, label, batchIds }  (batchIds खाली = सभी Batch)
    POST /api/attendance/config/festival/remove  { date }
 ===================================================== */
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -187,15 +187,18 @@ router.post("/config/weekly-holiday", async (req, res) => {
 router.post("/config/festival", async (req, res) => {
   const { date } = req.body;
   const label = String(req.body.label || "").trim().slice(0, 60);
+  // batchIds खाली = सभी Batch; वरना सिर्फ वही Batch जिनकी list आई है
+  const batchIds = Array.isArray(req.body.batchIds)
+    ? Array.from(new Set(req.body.batchIds.map(id => String(id)).filter(Boolean))).sort()
+    : [];
   if (!ISO_DATE.test(String(date || ""))) {
     return res.status(400).json({ success: false, message: "सही तारीख चुनें" });
   }
   try {
-    const exists = await AttendanceConfig.findOne({ key: "main", "holidays.date": date }).lean();
-    if (!exists) {
-      await AttendanceConfig.updateOne({ key: "main" }, { $push: { holidays: { date, label } } }, { upsert: true });
-    }
-    res.json({ success: true, already: !!exists });
+    // एक तारीख की एक ही entry रहती है — दुबारा जोड़ने पर वो नई सेटिंग से बदल जाती है
+    await AttendanceConfig.updateOne({ key: "main" }, { $pull: { holidays: { date } } }, { upsert: true });
+    await AttendanceConfig.updateOne({ key: "main" }, { $push: { holidays: { date, label, batchIds } } });
+    res.json({ success: true });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Save नहीं हो सका" });

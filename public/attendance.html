@@ -266,6 +266,7 @@
     }
 
     .att-weekly-row select,
+    .att-fest-add select,
     .att-fest-add input{
         padding:7px 9px;
         border:1px solid #ccc;
@@ -288,6 +289,19 @@
         padding:7px 14px;
         font-size:14px;
         cursor:pointer
+    }
+
+    .att-fest-pick{
+        flex-wrap:wrap;
+        gap:6px 16px;
+        margin:6px 0 10px;
+        font-size:14px
+    }
+
+    .att-fest-pick label{
+        display:flex;
+        align-items:center;
+        gap:5px
     }
 
     .att-fest-item{
@@ -358,12 +372,17 @@
         <div class="att-set-title">हर Batch की साप्ताहिक छुट्टी</div>
         <div id="weeklyBox"></div>
 
-        <div class="att-set-title">त्योहार की छुट्टियां (सभी Batch के लिए)</div>
+        <div class="att-set-title">तारीख वाली छुट्टियां (त्योहार या कोई भी खास दिन)</div>
         <div class="att-fest-add">
             <input type="date" id="festDate">
             <input type="text" id="festLabel" placeholder="नाम (जैसे Diwali)">
+            <select id="festScope" onchange="onFestScopeChange()">
+                <option value="all">सभी Batch की छुट्टी</option>
+                <option value="some">सिर्फ चुने हुए Batch की छुट्टी</option>
+            </select>
             <button onclick="addFestival()">जोड़ें</button>
         </div>
+        <div id="festBatchPick" class="att-fest-pick" style="display:none;"></div>
         <div id="festList"></div>
 
         <div class="att-note">
@@ -438,10 +457,15 @@ function batchKey(batch) {
   return batch.id || ("name:" + batch.name);
 }
 
+/* batchIds खाली (या पुरानी entry जिसमें है ही नहीं) = सभी Batch की छुट्टी */
+function festivalAppliesTo(fest, batch) {
+  return !fest.batchIds || !fest.batchIds.length || fest.batchIds.includes(batchKey(batch));
+}
+
 function holidayInfo(batch, iso) {
-  const fest = festivals.find(f => f.date === iso);
+  const fest = festivals.find(f => f.date === iso && festivalAppliesTo(f, batch));
   if (fest) {
-    return { label: fest.label ? `त्योहार की छुट्टी — ${ fest.label }` : "त्योहार की छुट्टी" };
+    return { label: fest.label ? `छुट्टी — ${ fest.label }` : "छुट्टी" };
   }
   const weekly = weeklyByBatch[batchKey(batch)];
   if (weekly !== undefined && weekly === weekdayOf(iso)) {
@@ -493,6 +517,7 @@ async function init() {
     const bRes = await fetch("/api/batches").then(r => r.json());
     batches = Array.isArray(bRes.batches) ? bRes.batches : [];
     await loadConfig();
+    renderFestPick();
 
     selectedDate = todayISO();
     const input = document.getElementById("dateInput");
@@ -742,7 +767,8 @@ function renderSettings() {
   festList.innerHTML = festivals.length
     ? festivals.map(f => `
         <div class="att-fest-item">
-            <span>${ fmtDate(f.date) } (${ WEEKDAYS[weekdayOf(f.date)] })${ f.label ? " — " + esc(f.label) : "" }</span>
+            <span>${ fmtDate(f.date) } (${ WEEKDAYS[weekdayOf(f.date)] })${ f.label ? " — " + esc(f.label) : "" }
+                <br><span class="att-note">${ esc(festScopeText(f)) }</span></span>
             <button onclick="removeFestival('${ f.date }')">✕</button>
         </div>`).join("")
     : `<div class="att-note">अभी कोई त्योहार की छुट्टी नहीं जुड़ी।</div>`;
@@ -766,6 +792,25 @@ async function setWeekly(bi, value) {
   }
 }
 
+function festScopeText(f) {
+  if (!f.batchIds || !f.batchIds.length) {
+    return "सभी Batch";
+  }
+  const names = batches.filter(b => f.batchIds.includes(batchKey(b))).map(b => b.name);
+  return names.length ? "सिर्फ: " + names.join(", ") : "सिर्फ चुने हुए Batch (वो Batch अब नहीं हैं)";
+}
+
+function renderFestPick() {
+  document.getElementById("festBatchPick").innerHTML = batches.map(b =>
+    `<label><input type="checkbox" value="${ esc(batchKey(b)) }"> ${ esc(b.name) }</label>`
+  ).join("");
+}
+
+function onFestScopeChange() {
+  const some = document.getElementById("festScope").value === "some";
+  document.getElementById("festBatchPick").style.display = some ? "flex" : "none";
+}
+
 async function addFestival() {
   const dateEl = document.getElementById("festDate");
   const labelEl = document.getElementById("festLabel");
@@ -775,16 +820,31 @@ async function addFestival() {
     alert("पहले छुट्टी की तारीख चुनें।");
     return;
   }
-  if (festivals.some(f => f.date === date)) {
-    alert("यह तारीख पहले से जुड़ी हुई है।");
+
+  let batchIds = [];
+  if (document.getElementById("festScope").value === "some") {
+    batchIds = Array.from(document.querySelectorAll("#festBatchPick input:checked")).map(el => el.value);
+    if (!batchIds.length) {
+      alert("कम से कम एक Batch चुनें।");
+      return;
+    }
+  }
+
+  if (festivals.some(f => f.date === date)
+      && !confirm("इस तारीख की छुट्टी पहले से जुड़ी है — नई सेटिंग से बदलनी है?")) {
     return;
   }
+
   try {
-    await postJSON("/api/attendance/config/festival", { date, label });
-    festivals.push({ date, label });
+    await postJSON("/api/attendance/config/festival", { date, label, batchIds });
+    festivals = festivals.filter(f => f.date !== date);
+    festivals.push({ date, label, batchIds });
     festivals.sort((a, b) => (a.date < b.date ? -1 : 1));
     dateEl.value = "";
     labelEl.value = "";
+    document.getElementById("festScope").value = "all";
+    document.querySelectorAll("#festBatchPick input").forEach(el => { el.checked = false; });
+    onFestScopeChange();
     renderGrid();
     renderSettings();
   } catch (error) {

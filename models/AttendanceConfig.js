@@ -7,7 +7,8 @@ const mongoose = require("mongoose");
    रहती तो मुख्य app के किसी भी Save से बिना बताए मिट सकती थी।
 
    weekly   : हर Batch की साप्ताहिक छुट्टी  [{ batchId, day }]   (0 = रविवार ... 6 = शनिवार)
-   holidays : त्योहार की छुट्टियां, सभी Batch पर एक साथ  [{ date, label }]
+   holidays : तारीख वाली छुट्टियां (त्योहार या कोई भी खास दिन) — हर तारीख की एक entry,
+              सभी Batch के लिए या सिर्फ चुने हुए Batch के लिए  [{ date, label, batchIds }]
 ===================================================== */
 const weeklySchema = new mongoose.Schema({
   batchId: { type: String, required: true },
@@ -16,7 +17,9 @@ const weeklySchema = new mongoose.Schema({
 
 const holidaySchema = new mongoose.Schema({
   date: { type: String, required: true },
-  label: { type: String, default: "" }
+  label: { type: String, default: "" },
+  // खाली = सभी Batch की छुट्टी; वरना सिर्फ इन Batch की (batchKey की list)
+  batchIds: { type: [String], default: [] }
 }, { _id: false });
 
 const attendanceConfigSchema = new mongoose.Schema({

@@ -64,7 +64,9 @@ async function fetchStudentMonthDates(studentId, ym) {
 }
 
 function attHolidayInfo(batch, iso, cfg) {
-  if (cfg.festivals.some(f => f.date === iso)) {
+  const key = attBatchKey(batch);
+  // batchIds खाली (या ना हो) = सभी Batch की छुट्टी, वरना सिर्फ चुने हुए Batch की
+  if (cfg.festivals.some(f => f.date === iso && (!f.batchIds || !f.batchIds.length || f.batchIds.includes(key)))) {
     return true;
   }
   const weekly = cfg.weeklyByBatch[attBatchKey(batch)];
@@ -156,7 +158,7 @@ async function refreshAttendanceProfileBlock() {
                 <div class="att-stat"><b>${ stats.holiday }</b><span>छुट्टी</span></div>
             </div>
             <div class="empty" style="text-align:left;padding:6px 0 0;">
-                छुट्टी इस Batch की अभी की साप्ताहिक छुट्टी और त्योहार की छुट्टियों के हिसाब से गिनी जाती है।
+                छुट्टी इस Batch की अभी की साप्ताहिक छुट्टी और तारीख वाली छुट्टियों के हिसाब से गिनी जाती है।
             </div>`;
   } catch (error) {
     box.textContent = "Attendance लोड नहीं हो सकी।";
