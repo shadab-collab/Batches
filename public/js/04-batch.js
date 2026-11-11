@@ -104,6 +104,54 @@ function moveStudent(index) {
   render();
 }
 /* =====================================================
+   MOVE STUDENT TO A POSITION
+   बच्चे के नंबर को दबाकर सीधे किसी भी नंबर पर भेजें — बार-बार
+   ↑ ↓ नहीं दबाने पड़ते। बीच के बाकी बच्चे अपने आप आगे-पीछे हो जाते हैं।
+===================================================== */
+function moveStudentToPosition(index) {
+  if (currentBatch === null) {
+    return;
+  }
+  const students = batches[currentBatch].students;
+  const student = students[index];
+  if (!student || students.length < 2) {
+    return;
+  }
+  const total = students.length;
+  const answer = prompt(
+    `${ student.name }\n\nअभी नंबर ${ index + 1 } पर है।\nकिस नंबर पर भेजना है? (1 से ${ total })`,
+    String(index + 1)
+  );
+  if (answer === null) {
+    return;
+  }
+  // हिंदी अंक (१२३) लिखे हों तब भी चले
+  const typed = answer.trim().replace(/[०-९]/g, d => String("०१२३४५६७८९".indexOf(d)));
+  const target = Number(typed);
+  if (typed === "" || !Number.isInteger(target) || target < 1 || target > total) {
+    alert(`1 से ${ total } के बीच सही नंबर लिखें\u0964`);
+    return;
+  }
+  if (target - 1 === index) {
+    return;
+  }
+  students.splice(index, 1);
+  students.splice(target - 1, 0, student);
+  saveData();
+  renderStudents();
+  render();
+
+  // नई जगह पर पहुंचा बच्चा कुछ देर पीला दिखे, ताकि पता चले कहां गया
+  const row = document.querySelectorAll("#studentList .student-row")[target - 1];
+  if (row) {
+    row.style.background = "#fff3b0";
+    if (row.scrollIntoView) {
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    setTimeout(() => { row.style.background = ""; }, 1500);
+  }
+}
+/* =====================================================
    RENDER STUDENTS
 ===================================================== */
 function renderStudents() {
@@ -118,13 +166,21 @@ function renderStudents() {
             </div>`;
     return;
   }
-  list.innerHTML = students.map((student, i) => `
+  const jumpHint = students.length > 1
+    ? `<div style="font-size:12px;color:#777;padding:0 0 8px;">नंबर दबाकर बच्चे को सीधे किसी भी नंबर पर भेजें</div>`
+    : "";
+  list.innerHTML = jumpHint + students.map((student, i) => `
 
                 <div class="student-row">
 
-                    <div class="serial-manage">
-                        ${ i + 1 }.
-                    </div>
+                    ${ students.length > 1
+    ? `<button
+                        class="serial-manage"
+                        title="सीधे किसी नंबर पर भेजें"
+                        style="width:34px;height:32px;padding:0;border:1px solid #b8c4d0;border-radius:8px;background:#f2f6fa;color:#1769aa;font-size:14px;font-weight:700;cursor:pointer;"
+                        onclick="moveStudentToPosition(${ i })"
+                    >${ i + 1 }</button>`
+    : `<div class="serial-manage">${ i + 1 }.</div>` }
 
 
                     <button
