@@ -327,6 +327,49 @@
         margin-top:6px
     }
 
+    /* ---------- उस दिन का कुल उपस्थित / अनुपस्थित ---------- */
+    .att-summary{
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px 12px;
+        align-items:center;
+        justify-content:center;
+        padding:10px 14px;
+        font-size:14px
+    }
+
+    .att-chip{
+        background:#fff;
+        border:1px solid #ddd;
+        border-radius:999px;
+        padding:5px 14px;
+        font-weight:600
+    }
+
+    .att-chip b{
+        font-size:17px;
+        margin-left:4px
+    }
+
+    .att-chip.present{
+        color:#2e7d32;
+        border-color:#a5d6a7;
+        background:#f1f8f2
+    }
+
+    .att-chip.absent{
+        color:#c62828;
+        border-color:#ef9a9a;
+        background:#fdf3f3
+    }
+
+    .att-chip.off{
+        color:#b45309;
+        border-color:#f3d19e;
+        background:#fff8ec;
+        font-weight:500
+    }
+
     #status{
         text-align:center;
         color:#777;
@@ -362,6 +405,8 @@
 </div>
 
 <div id="status">लोड हो रहा है...</div>
+
+<div class="att-summary" id="daySummary"></div>
 
 <div class="batch-grid" id="attGrid"></div>
 
@@ -641,7 +686,39 @@ function cardHTML(bi) {
     </div>`;
 }
 
+/* चुनी हुई तारीख का कुल हाल (सभी Batch मिलाकर): उपस्थित, अनुपस्थित।
+   जिस Batch की उस दिन छुट्टी है उसके जो बच्चे Present नहीं हैं वो Absent नहीं
+   गिने जाते — उन्हें अलग से बताया जाता है। (कोई छुट्टी वाले दिन भी आया हो
+   तो वो उपस्थित में गिना जाता है।) */
+function renderSummary() {
+  const box = document.getElementById("daySummary");
+  if (!box) {
+    return;
+  }
+  let present = 0;
+  let absent = 0;
+  let offStudents = 0;
+  batches.forEach(batch => {
+    const off = holidayInfo(batch, selectedDate);
+    (batch.students || []).forEach(student => {
+      if (presentSet.has(student.id)) {
+        present++;
+      } else if (off) {
+        offStudents++;
+      } else {
+        absent++;
+      }
+    });
+  });
+  box.innerHTML = `
+        <span class="att-chip present">उपस्थित <b>${ present }</b></span>
+        <span class="att-chip absent">अनुपस्थित <b>${ absent }</b></span>
+        <span class="att-chip">कुल <b>${ present + absent }</b></span>
+        ${ offStudents ? `<span class="att-chip off">छुट्टी वाले Batch के ${ offStudents } बच्चे गिनती में नहीं</span>` : "" }`;
+}
+
 function renderGrid() {
+  renderSummary();
   const grid = document.getElementById("attGrid");
   if (!batches.length) {
     grid.innerHTML = `<div class="empty">कोई Batch नहीं है।</div>`;
@@ -655,6 +732,7 @@ function renderCard(bi) {
   if (card) {
     card.outerHTML = cardHTML(bi);
   }
+  renderSummary();
 }
 
 /* ---------- mark / unmark ---------- */

@@ -6,7 +6,7 @@
    खुलता है। यहां सिर्फ दो चीज़ें हैं:
    - Home का Attendance बटन वो पेज खोलता है
    - हर Active बच्चे की profile में इस महीने का Summary और
-     Monthly Calendar (हरा ✓ आया, लाल ✗ नहीं आया, ग्रे छुट्टी)
+     Monthly Calendar (हरा ✓ उपस्थित, लाल ✗ अनुपस्थित, ग्रे छुट्टी)
 
    छुट्टियों की सेटिंग (Batch की साप्ताहिक + त्योहार) सर्वर से ली जाती है,
    मुख्य app की अपनी memory से नहीं।
@@ -166,7 +166,7 @@ async function refreshAttendanceProfileBlock() {
 }
 
 /* =====================================================
-   MONTHLY CALENDAR (हरा ✓ = आया, लाल ✗ = नहीं आया, ग्रे = छुट्टी)
+   MONTHLY CALENDAR (हरा ✓ = उपस्थित, लाल ✗ = अनुपस्थित, ग्रे = छुट्टी)
 ===================================================== */
 
 async function openAttendanceCalendar() {
@@ -208,14 +208,14 @@ async function openAttendanceCalendar() {
 
   document.getElementById("attCalendarPaper").innerHTML = `
         <div class="att-cal-title">${ escapeHtml(student.name) }</div>
-        <div class="att-cal-sub">${ escapeHtml(batch.name) } · ${ ATT_MONTHS[m - 1] } ${ y }<br>Present ${ stats.present } / ${ stats.present + stats.absent } दिन</div>
+        <div class="att-cal-sub">${ escapeHtml(batch.name) } · ${ ATT_MONTHS[m - 1] } ${ y }<br>उपस्थित ${ stats.present } / ${ stats.present + stats.absent } दिन</div>
         <div class="att-cal-grid">
             ${ ATT_WEEKDAYS_SHORT.map(n => `<div class="att-cal-dow">${ n }</div>`).join("") }
             ${ cells.join("") }
         </div>
         <div class="att-cal-legend">
-            <span style="color:#2e7d32;">✓ आया</span>
-            <span style="color:#c62828;">✗ नहीं आया</span>
+            <span style="color:#2e7d32;">✓ उपस्थित</span>
+            <span style="color:#c62828;">✗ अनुपस्थित</span>
             <span style="color:#78909c;">छुट्टी</span>
         </div>`;
 
