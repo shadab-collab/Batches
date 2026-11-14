@@ -60,6 +60,8 @@ async function loadFeeCard(student) {
     const res = await fetch(url);
     const data = await res.json();
     data.familyFullyInactive = owner.ownerType === "family" && !!capDate;
+    // अकेला (Solo) Inactive बच्चा: किस तारीख से नई Cycle बननी बंद है
+    data.soloInactiveSince = owner.ownerType === "student" && capDate ? capDate : "";
     currentFeeData = data;
     renderFeeCard(data);
   } catch (error) {
@@ -140,7 +142,7 @@ async function loadFeeHistorySharedSection(student, currentOwner) {
                         कुल दर्ज राशि: ₹${ totalRecorded }
                     </div>
                     ${ freezeControl }
-                    ${ data.totalDue > 0 ? `<button class="btn-light small-btn" style="margin-bottom:10px;" onclick="openPaymentModalForOwner('${ key.ownerType }', '${ key.ownerKey }')">इस पुराने Record में Payment दर्ज करें</button>` : "" }
+                    ${ data.totalDue > 0 ? `<button class="btn-light small-btn" style="margin-bottom:10px;" onclick="openPaymentModalForOwner('${ key.ownerType }', '${ key.ownerKey }', '${ key.frozenFrom || "" }')">इस पुराने Record में Payment दर्ज करें</button>` : "" }
                     ${ cycleRows }
                 </div>
             `);
@@ -228,6 +230,7 @@ function renderFeeCard(data) {
 
   body.innerHTML = `
         ${ data.familyFullyInactive ? '<div class="expelled-banner">यह Family पूरी तरह Inactive है — आगे नई Fee Cycle नहीं बनेगी</div>' : "" }
+        ${ data.soloInactiveSince ? `<div class="expelled-banner">यह बच्चा Inactive है (${ FeeUtils.formatDDMM(data.soloInactiveSince) } से) — आगे नई Fee Cycle नहीं बनेगी। जो Cycle पहले बन चुकी हैं उनकी Payment पहले की तरह दर्ज हो सकती है।</div>` : "" }
 
         <div class="fee-summary">
             <div><strong>Type:</strong> ${ modeLabel }</div>
@@ -666,9 +669,11 @@ function openPaymentModal() {
    the student's current one — e.g. clearing Kasif's two old unpaid
    solo cycles months later, after he's already merged into a new
    family and his current owner key has changed. */
-async function openPaymentModalForOwner(ownerType, ownerKey) {
+async function openPaymentModalForOwner(ownerType, ownerKey, frozenFrom) {
   try {
-    const res = await fetch(`/api/fees/${ ownerType }/${ ownerKey }`);
+    // बिना freeze date के यह fetch पुराने Record में आज तक की नई Cycle बना देता था
+    const capParam = frozenFrom ? `?capDate=${ encodeURIComponent(frozenFrom) }` : "";
+    const res = await fetch(`/api/fees/${ ownerType }/${ ownerKey }${ capParam }`);
     const data = await res.json();
     if (!data.success || !data.hasProfile) {
       alert("यह पुराना Record अभी लोड नहीं हो सका।");
