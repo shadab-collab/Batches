@@ -273,7 +273,11 @@ function openInactiveStudentProfile(index) {
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
-  loadAttendanceProfileBlock(null);
+  loadAttendanceProfileBlock(student, null, {
+    status: "inactive",
+    until: student.inactiveSince || null,
+    batchName: ""
+  });
 
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";
@@ -541,7 +545,12 @@ function openAwayStudentProfile(index) {
   updateFamilyProfile(student);
   loadFeeCard(student);
   loadAssessmentSummary(student);
-  loadAttendanceProfileBlock(null);
+  const awayBatch = batches.find(b => b.id === student.awayBatchId) || null;
+  loadAttendanceProfileBlock(student, awayBatch, {
+    status: "away",
+    until: student.awaySince || null,
+    batchName: student.awayBatchName || ""
+  });
 
   document.getElementById("overlay").style.display = "none";
   document.getElementById("profileOverlay").style.display = "none";

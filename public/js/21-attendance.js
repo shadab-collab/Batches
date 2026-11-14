@@ -18,6 +18,8 @@ const ATT_MONTHS = ["जनवरी", "फ़रवरी", "मार्च", 
 let attProfileStudent = null;
 let attProfileBatch = null;
 let attCalendarContext = null;
+let attProfileOpts = null;   // Away / Inactive बच्चे के लिए: { status, until, batchName }
+let attProfileInfo = null;   // उस बच्चे के पूरे Attendance का सार (कुल दिन, पहली/आख़िरी तारीख)
 
 function openAttendancePage() {
   window.open("/attendance.html", "_blank");
@@ -54,6 +56,20 @@ async function fetchAttendanceConfig() {
   return { weeklyByBatch, festivals: data.holidays || [] };
 }
 
+async function fetchAttendanceInfo(studentId) {
+  const res = await fetch(`/api/attendance/student/${ encodeURIComponent(studentId) }/info`);
+  const data = await res.json();
+  if (!data.success) {
+    throw new Error("info load failed");
+  }
+  return data;
+}
+
+function attFmt(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${ d }/${ m }/${ y }`;
+}
+
 async function fetchStudentMonthDates(studentId, ym) {
   const res = await fetch(`/api/attendance/student/${ encodeURIComponent(studentId) }/${ ym }`);
   const data = await res.json();
@@ -63,19 +79,26 @@ async function fetchStudentMonthDates(studentId, ym) {
   return data.dates;
 }
 
+/* batch खाली (null) हो सकता है — जैसे पुराना Inactive बच्चा जिसका Batch अब पता
+   नहीं; तब सिर्फ "सभी Batch" वाली छुट्टियां लगती हैं, साप्ताहिक नहीं। */
 function attHolidayInfo(batch, iso, cfg) {
-  const key = attBatchKey(batch);
+  const key = batch ? attBatchKey(batch) : null;
   // batchIds खाली (या ना हो) = सभी Batch की छुट्टी, वरना सिर्फ चुने हुए Batch की
-  if (cfg.festivals.some(f => f.date === iso && (!f.batchIds || !f.batchIds.length || f.batchIds.includes(key)))) {
+  if (cfg.festivals.some(f => f.date === iso
+      && (!f.batchIds || !f.batchIds.length || (key !== null && f.batchIds.includes(key))))) {
     return true;
   }
-  const weekly = cfg.weeklyByBatch[attBatchKey(batch)];
+  if (!batch) {
+    return false;
+  }
+  const weekly = cfg.weeklyByBatch[key];
   return weekly !== undefined && weekly === attWeekday(iso);
 }
 
-/* महीने के हर दिन का हाल: present / absent / holiday / (खाली = आगे का दिन या
-   admission से पहले का दिन)। Absent = गुज़रा गैर-Holiday दिन जिसमें Present नहीं। */
-function attComputeMonth(student, batch, ym, presentDates, cfg) {
+/* महीने के हर दिन का हाल: present / absent / holiday / (खाली = आगे का दिन,
+   admission से पहले का दिन, या `until` (Away/Inactive होने की तारीख) के बाद का दिन)।
+   Absent = गुज़रा गैर-Holiday दिन जिसमें Present नहीं — जाने के बाद के दिन Absent नहीं गिने जाते। */
+function attComputeMonth(student, batch, ym, presentDates, cfg, until) {
   const [y, m] = ym.split("-").map(Number);
   const todayIso = FeeUtils.todayISO();
   const total = attDaysInMonth(y, m);
@@ -92,7 +115,7 @@ function attComputeMonth(student, batch, ym, presentDates, cfg) {
     if (presentSet.has(iso)) {
       state = "present";
       stats.present++;
-    } else if (!isFuture && !beforeAdmission) {
+    } else if (!isFuture && !beforeAdmission && !(until && iso >= until)) {
       if (attHolidayInfo(batch, iso, cfg)) {
         state = "holiday";
         stats.holiday++;
@@ -111,35 +134,83 @@ function attComputeMonth(student, batch, ym, presentDates, cfg) {
    (सिर्फ Active batch के बच्चे की profile में दिखता है)
 ===================================================== */
 
-function loadAttendanceProfileBlock(student, batch) {
+async function loadAttendanceProfileBlock(student, batch, opts) {
   const section = document.getElementById("attendanceProfileSection");
   if (!section) {
     return;
   }
-  if (!student || !batch) {
+  if (!student) {
     attProfileStudent = null;
     attProfileBatch = null;
+    attProfileOpts = null;
+    attProfileInfo = null;
     section.style.display = "none";
     return;
   }
   attProfileStudent = student;
-  attProfileBatch = batch;
+  attProfileBatch = batch || null;
+  attProfileOpts = opts || null;
+  attProfileInfo = null;
   section.style.display = "";
-  document.getElementById("attProfileMonth").value = FeeUtils.todayISO().slice(0, 7);
+
+  const picker = document.getElementById("attProfileMonth");
+  picker.value = FeeUtils.todayISO().slice(0, 7);
+
+  // Away / Inactive बच्चे: आज के महीने में तो कुछ होगा नहीं, इसलिए उस महीने से
+  // शुरू करो जिसमें उनकी आख़िरी Attendance लगी थी; और Batch पता ना हो तो
+  // आख़िरी Attendance वाले Batch से पहचान लो।
+  if (opts) {
+    document.getElementById("attProfileSummary").textContent = "लोड हो रहा है...";
+    try {
+      const info = await fetchAttendanceInfo(student.id);
+      if (student !== attProfileStudent) {
+        return;
+      }
+      attProfileInfo = info;
+      if (!attProfileBatch && info.lastBatchId) {
+        attProfileBatch = batches.find(b => attBatchKey(b) === info.lastBatchId) || null;
+      }
+      const anchor = info.lastDate || opts.until || FeeUtils.todayISO();
+      picker.value = anchor.slice(0, 7);
+    } catch (error) {
+      /* सार नहीं मिला तो भी चुने महीने का record दिखाने की कोशिश आगे होगी */
+    }
+  }
   refreshAttendanceProfileBlock();
+}
+
+/* Away / Inactive बच्चे की profile में ऊपर की सूचना + पूरे समय का सार */
+function attHistoryNote() {
+  if (!attProfileOpts) {
+    return "";
+  }
+  const statusName = attProfileOpts.status === "away" ? "Temporarily Away" : "Inactive";
+  const since = attProfileOpts.until ? ` (${ attFmt(attProfileOpts.until) } से)` : "";
+  let summary = "";
+  if (attProfileInfo) {
+    summary = attProfileInfo.total
+      ? `<br>कुल उपस्थित: <b>${ attProfileInfo.total } दिन</b> · पहली उपस्थिति ${ attFmt(attProfileInfo.firstDate) } · आख़िरी उपस्थिति ${ attFmt(attProfileInfo.lastDate) }`
+      : "<br>इस बच्चे का कोई Attendance record नहीं मिला।";
+  }
+  return `
+        <div class="empty" style="text-align:left;padding:0 0 10px;">
+            यह बच्चा अभी <b>${ statusName }</b> है${ since } — नीचे पुराना Attendance record है, नई Attendance अब नहीं लगती।
+            ${ summary }
+        </div>`;
 }
 
 async function refreshAttendanceProfileBlock() {
   const box = document.getElementById("attProfileSummary");
   const student = attProfileStudent;
   const batch = attProfileBatch;
-  if (!student || !batch) {
+  if (!student) {
     return;
   }
   const ym = document.getElementById("attProfileMonth").value;
   if (!ym) {
     return;
   }
+  const until = attProfileOpts ? attProfileOpts.until : null;
   box.textContent = "लोड हो रहा है...";
   try {
     const [dates, cfg] = await Promise.all([
@@ -149,8 +220,8 @@ async function refreshAttendanceProfileBlock() {
     if (student !== attProfileStudent) {
       return;
     }
-    const { stats } = attComputeMonth(student, batch, ym, dates, cfg);
-    box.innerHTML = `
+    const { stats } = attComputeMonth(student, batch, ym, dates, cfg, until);
+    box.innerHTML = attHistoryNote() + `
             <div class="att-stat-row">
                 <div class="att-stat green"><b>${ stats.present }</b><span>Present</span></div>
                 <div class="att-stat red"><b>${ stats.absent }</b><span>Absent</span></div>
@@ -173,9 +244,10 @@ async function openAttendanceCalendar() {
   const student = attProfileStudent;
   const batch = attProfileBatch;
   const ym = document.getElementById("attProfileMonth").value;
-  if (!student || !batch || !ym) {
+  if (!student || !ym) {
     return;
   }
+  const until = attProfileOpts ? attProfileOpts.until : null;
   let dates;
   let cfg;
   try {
@@ -187,7 +259,8 @@ async function openAttendanceCalendar() {
     alert("Attendance लोड नहीं हो सकी। इंटरनेट चेक करें।");
     return;
   }
-  const { days, stats, y, m } = attComputeMonth(student, batch, ym, dates, cfg);
+  const { days, stats, y, m } = attComputeMonth(student, batch, ym, dates, cfg, until);
+  const batchLabel = batch ? batch.name : ((attProfileOpts && attProfileOpts.batchName) || "");
   const firstWeekday = new Date(y, m - 1, 1).getDay();
 
   const cells = [];
@@ -208,7 +281,7 @@ async function openAttendanceCalendar() {
 
   document.getElementById("attCalendarPaper").innerHTML = `
         <div class="att-cal-title">${ escapeHtml(student.name) }</div>
-        <div class="att-cal-sub">${ escapeHtml(batch.name) } · ${ ATT_MONTHS[m - 1] } ${ y }<br>उपस्थित ${ stats.present } / ${ stats.present + stats.absent } दिन</div>
+        <div class="att-cal-sub">${ batchLabel ? escapeHtml(batchLabel) + " · " : "" }${ ATT_MONTHS[m - 1] } ${ y }<br>उपस्थित ${ stats.present } / ${ stats.present + stats.absent } दिन</div>
         <div class="att-cal-grid">
             ${ ATT_WEEKDAYS_SHORT.map(n => `<div class="att-cal-dow">${ n }</div>`).join("") }
             ${ cells.join("") }

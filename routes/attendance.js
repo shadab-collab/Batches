@@ -93,6 +93,34 @@ router.get("/month-counts/:yearMonth", async (req, res) => {
 });
 
 /* =====================================================
+   एक student का पूरा Attendance history-सार (Away / Inactive बच्चों की
+   profile में पुराना record दिखाने के लिए): कुल उपस्थित दिन, पहली और
+   आख़िरी उपस्थिति की तारीख, और आख़िरी बार वो किस Batch में Present लगा था।
+   GET /api/attendance/student/:studentId/info
+   (यह route नीचे वाली :yearMonth वाली route से पहले ही रहना चाहिए)
+===================================================== */
+router.get("/student/:studentId/info", async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const [first, last, total] = await Promise.all([
+      Attendance.findOne({ studentId }).sort({ date: 1 }).lean(),
+      Attendance.findOne({ studentId }).sort({ date: -1 }).lean(),
+      Attendance.countDocuments({ studentId })
+    ]);
+    res.json({
+      success: true,
+      total,
+      firstDate: first ? first.date : null,
+      lastDate: last ? last.date : null,
+      lastBatchId: last ? (last.batchId || "") : ""
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Load नहीं हो सका" });
+  }
+});
+
+/* =====================================================
    एक student की एक महीने की पूरी तारीख-दर-तारीख List (Profile वाले
    Summary और आगे Monthly Calendar के लिए)
    GET /api/attendance/student/:studentId/:yearMonth
