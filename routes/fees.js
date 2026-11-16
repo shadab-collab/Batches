@@ -50,6 +50,7 @@ function amountForProfile(profile) {
 function expandCycles(profiles, asOfIso, capDate, opts) {
   const result = [];
   const useCalendarMonth = !!(opts && opts.useCalendarMonth);
+  const skipKeys = opts && opts.skipKeys ? opts.skipKeys : null;
 
   profiles.forEach(profile => {
     const dueDateType = profile.dueDateType;
@@ -79,6 +80,10 @@ function expandCycles(profiles, asOfIso, capDate, opts) {
     }
 
     FeeUtils.listCycles(dueDateType, segStart, segEnd).forEach(c => {
+      // Delete की गई (मिटी चिह्नित) cycles कभी वापस नहीं गिनी जातीं
+      if (skipKeys && skipKeys.has(c.cycleKey)) {
+        return;
+      }
       result.push({ cycle: c, profile });
     });
   });
@@ -113,6 +118,58 @@ async function ensureCycles(ownerType, ownerKey, profiles, capDate) {
   return expanded.map(e => e.cycle.cycleKey);
 }
 
+/* =====================================================
+   INACTIVE OWNER — सर्वर की अपनी जानकारी से रोक
+   पहले यह रोक सिर्फ तब लगती थी जब frontend खुद ?capDate भेजे, और वो भी
+   तभी जब बच्चे पर active=false का निशान हो — पुराने Inactive बच्चों में वो
+   निशान नहीं होता, और Payment वाले बटन जैसे रास्ते तारीख भेजते ही नहीं थे।
+   इसलिए अब सर्वर खुद BatchData में देखता है:
+   - अकेला (student) owner: बच्चा inactiveStudents में है और किसी batch/away
+     में नहीं → inactiveSince पर रुको
+   - Family owner: कोई भी सदस्य Active या Away नहीं, सारे Inactive → सबसे
+     देर वाली inactiveSince पर रुको
+   तारीख पता ना हो (बहुत पुराना record) तो noNew = सिर्फ पहले से बनी cycles
+   दिखें, कोई नई ना बने।
+===================================================== */
+function inactiveCapFor(batchData, ownerType, ownerKey) {
+  const none = { capDate: null, noNew: false };
+  if (!batchData) {
+    return none;
+  }
+  const inBatches = [];
+  (batchData.batches || []).forEach(b => (b.students || []).forEach(st => inBatches.push(st)));
+  const away = batchData.awayStudents || [];
+  const inactive = batchData.inactiveStudents || [];
+
+  if (ownerType === "student") {
+    const st = inactive.find(x => x.id === ownerKey);
+    if (!st || inBatches.some(x => x.id === ownerKey) || away.some(x => x.id === ownerKey)) {
+      return none;
+    }
+    return st.inactiveSince ? { capDate: st.inactiveSince, noNew: false } : { capDate: null, noNew: true };
+  }
+
+  if (ownerType === "family") {
+    const isMember = x => x.familyCode === ownerKey;
+    if (inBatches.some(isMember) || away.some(isMember)) {
+      return none;
+    }
+    const members = inactive.filter(isMember);
+    if (!members.length) {
+      return none;
+    }
+    let latest = null;
+    members.forEach(m => {
+      if (m.inactiveSince && (!latest || m.inactiveSince > latest)) {
+        latest = m.inactiveSince;
+      }
+    });
+    return latest ? { capDate: latest, noNew: false } : { capDate: null, noNew: true };
+  }
+
+  return none;
+}
+
 
 /* =====================================================
    GET FEE STATE  /api/fees/:ownerType/:ownerKey
@@ -131,16 +188,28 @@ async function getFeeStateForOwner(ownerType, ownerKey, capDate) {
     return { success: true, hasProfile: false };
   }
 
-  const expectedKeys = await ensureCycles(ownerType, ownerKey, profiles, capDate);
-  // capDate दिया गया हो तो सिर्फ उतनी ही cycles दिखाओ जो उस तारीख तक due
+  // Inactive owner पर रोक सर्वर खुद लगाता है (frontend ने तारीख भेजी हो या नहीं);
+  // frontend की तारीख भी आई हो तो दोनों में से जो पहले की है वही चलती है।
+  const batchData = await BatchData.findOne({ key: "main" }).lean();
+  const server = inactiveCapFor(batchData, ownerType, ownerKey);
+  let effectiveCap = capDate || null;
+  if (server.capDate && (!effectiveCap || server.capDate < effectiveCap)) {
+    effectiveCap = server.capDate;
+  }
+
+  const expectedKeys = server.noNew
+    ? null
+    : await ensureCycles(ownerType, ownerKey, profiles, effectiveCap);
+  // रोक की तारीख हो तो सिर्फ उतनी ही cycles दिखाओ जो उस तारीख तक due
   // हो चुकी थीं — भले ही DB में उससे आगे की कोई cycle पहले से मौजूद हो
-  // (जैसे उसी owner को किसी और — अब भी active — सदस्य ने बिना capDate के
+  // (जैसे उसी owner को किसी और — अब भी active — सदस्य ने बिना तारीख के
   // खोला हो, जिससे वो cycle पहले ही बन चुकी है)।
-  const allowedKeys = capDate ? new Set(expectedKeys) : null;
+  const allowedKeys = (effectiveCap && expectedKeys) ? new Set(expectedKeys) : null;
 
   let cycles = await FeeCycle.find({ ownerType, ownerKey })
     .sort({ cycleKey: 1 })
     .lean();
+  cycles = cycles.filter(c => !c.deleted);
   if (allowedKeys) {
     cycles = cycles.filter(c => allowedKeys.has(c.cycleKey));
   }
@@ -350,6 +419,9 @@ router.post("/:ownerType/:ownerKey/payment", async (req, res) => {
       const dueDateType = profiles[0].dueDateType;
       for (const a of allocations) {
         const existing = await FeeCycle.findOne({ ownerType, ownerKey, cycleKey: a.cycleKey });
+        if (existing && existing.deleted) {
+          return res.status(400).json({ success: false, message: "यह Cycle Delete की जा चुकी है — पेज refresh करके दुबारा देखें" });
+        }
         if (!existing) {
           const profile = profileForCycle(profiles, a.cycleKey);
           if (profile) {
@@ -533,6 +605,15 @@ router.post("/bulk-status", async (req, res) => {
       .sort({ effectiveFrom: 1 })
       .lean();
     const paymentDocs = await Payment.find({ $or: orConditions }).lean();
+    const deletedDocs = await FeeCycle.find({ $or: orConditions, deleted: true }).lean();
+    const deletedByOwner = {};
+    deletedDocs.forEach(c => {
+      const k = `${ c.ownerType }:${ c.ownerKey }`;
+      if (!deletedByOwner[k]) {
+        deletedByOwner[k] = new Set();
+      }
+      deletedByOwner[k].add(c.cycleKey);
+    });
 
     const profilesByOwner = {};
     for (const p of profiles) {
@@ -564,7 +645,7 @@ router.post("/bulk-status", async (req, res) => {
         continue;
       }
 
-      const expanded = expandCycles(ownerProfiles, today);
+      const expanded = expandCycles(ownerProfiles, today, null, { skipKeys: deletedByOwner[key] });
       if (!expanded.length) {
         continue;
       }
@@ -768,8 +849,16 @@ async function buildMonthlyListData() {
     // locked amountDue ही सही माने — ताकि पहले से Paid cycle कभी भी
     // "pending" करके दुबारा ना दिख जाए।
     const amountByOwnerCycle = {};
+    const deletedByOwner = {};
     allCycles.forEach(c => {
       const key = `${ c.ownerType }:${ c.ownerKey }`;
+      if (c.deleted) {
+        if (!deletedByOwner[key]) {
+          deletedByOwner[key] = new Set();
+        }
+        deletedByOwner[key].add(c.cycleKey);
+        return;
+      }
       if (!amountByOwnerCycle[key]) {
         amountByOwnerCycle[key] = {};
       }
@@ -796,7 +885,7 @@ async function buildMonthlyListData() {
         paidByOwnerCycle[key] || {},
         today,
         amountByOwnerCycle[key] || {},
-        { useCalendarMonth: true }
+        { useCalendarMonth: true, skipKeys: deletedByOwner[key] }
       );
 
       const entry = { ...owner, monthCodes: codes };
@@ -851,12 +940,19 @@ router.post("/:ownerType/:ownerKey/cycle/:cycleKey/delete", async (req, res) => 
   const { ownerType, ownerKey, cycleKey } = req.params;
 
   try {
-    const cycleResult = await FeeCycle.deleteOne({ ownerType, ownerKey, cycleKey });
+    const row = await FeeCycle.findOne({ ownerType, ownerKey, cycleKey }).lean();
+    if (!row) {
+      // पहले बिना कुछ मिटाए भी "success" लौट आता था — जिससे लगता था Delete हुआ
+      return res.status(404).json({ success: false, message: "यह Cycle मिली नहीं — पेज refresh करके दुबारा देखें" });
+    }
+    // Row को मिटाने की जगह "मिटी" चिह्नित करते हैं, ताकि सिस्टम उसे तारीख के
+    // हिसाब से दुबारा ना बना दे (मिटाने पर Fee card खुलते ही वो लौट आती थी)।
+    await FeeCycle.updateOne({ ownerType, ownerKey, cycleKey }, { $set: { deleted: true } });
     const paymentResult = await Payment.deleteMany({ ownerType, ownerKey, cycleKey });
 
     res.json({
       success: true,
-      cycleDeleted: cycleResult.deletedCount > 0,
+      cycleDeleted: true,
       paymentsDeleted: paymentResult.deletedCount || 0
     });
 
@@ -872,4 +968,5 @@ module.exports.getFeeStateForOwner = getFeeStateForOwner;
 module.exports.profileForCycle = profileForCycle;
 module.exports.amountForProfile = amountForProfile;
 module.exports.expandCycles = expandCycles;
+module.exports.inactiveCapFor = inactiveCapFor;
 module.exports.buildMonthlyListData = buildMonthlyListData;

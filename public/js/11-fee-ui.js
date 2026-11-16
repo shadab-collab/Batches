@@ -291,7 +291,7 @@ async function deleteCycle(ownerType, ownerKey, cycleKey, rangeLabel, paidSum, c
     return;
   }
   try {
-    const res = await fetch(`/api/fees/${ ownerType }/${ ownerKey }/cycle/${ cycleKey }/delete`, {
+    const res = await fetch(`/api/fees/${ encodeURIComponent(ownerType) }/${ encodeURIComponent(ownerKey) }/cycle/${ encodeURIComponent(cycleKey) }/delete`, {
       method: "POST"
     });
     const data = await res.json();

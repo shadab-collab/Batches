@@ -5,7 +5,7 @@ const { BatchData } = require("../models/BatchData");
 const { FeeProfile, FeeCycle, Payment } = require("../models/Fee");
 const { isMongoReady } = require("../config/db");
 const FeeUtils = require("../public/js/10-fee-utils.js");
-const { amountForProfile, expandCycles, buildMonthlyListData } = require("./fees");
+const { amountForProfile, expandCycles, buildMonthlyListData, inactiveCapFor } = require("./fees");
 const { buildTimeline } = require("./dashboard");
 
 function requireMongo(req, res, next) {
@@ -29,19 +29,27 @@ router.use(requireMongo);
    does) would mean hundreds of extra database round trips and
    make the export very slow. Reading only keeps it fast.
 ===================================================== */
-async function computeReadOnlyFeeState(ownerType, ownerKey) {
+async function computeReadOnlyFeeState(ownerType, ownerKey, capInfo) {
   const profiles = await FeeProfile.find({ ownerType, ownerKey }).sort({ effectiveFrom: 1 }).lean();
   if (!profiles.length) {
     return { hasProfile: false };
   }
 
-  const expanded = expandCycles(profiles, FeeUtils.todayISO());
-
   const [existingCycles, payments] = await Promise.all([
     FeeCycle.find({ ownerType, ownerKey }).lean(),
     Payment.find({ ownerType, ownerKey }).sort({ paymentDate: 1, createdAt: 1 }).lean()
   ]);
-  const existingByKey = new Map(existingCycles.map(c => [c.cycleKey, c]));
+  // Delete की गई cycles Backup में भी नहीं दिखनी चाहिए
+  const deletedKeys = new Set(existingCycles.filter(c => c.deleted).map(c => c.cycleKey));
+  const existingByKey = new Map(existingCycles.filter(c => !c.deleted).map(c => [c.cycleKey, c]));
+
+  // Inactive बच्चे/Family की Inactive होने की तारीख के बाद की cycle यहां भी नहीं
+  // दिखनी चाहिए (यह सिर्फ गणना है, DB में कुछ नहीं बनता); तारीख पता ना हो तो
+  // सिर्फ वही cycles जो पहले से बनी हुई हैं।
+  let expanded = expandCycles(profiles, FeeUtils.todayISO(), capInfo ? capInfo.capDate : null, { skipKeys: deletedKeys });
+  if (capInfo && capInfo.noNew) {
+    expanded = expanded.filter(e => existingByKey.has(e.cycle.cycleKey));
+  }
 
   const paidByCycle = {};
   const charityByCycle = {};
@@ -189,7 +197,7 @@ async function buildBackupDataset() {
 
   const ownerEntries = Array.from(owners.entries());
   const states = await Promise.all(
-    ownerEntries.map(([, info]) => computeReadOnlyFeeState(info.ownerType, info.ownerKey))
+    ownerEntries.map(([, info]) => computeReadOnlyFeeState(info.ownerType, info.ownerKey, inactiveCapFor(data, info.ownerType, info.ownerKey)))
   );
   const feeStateByKey = new Map();
 

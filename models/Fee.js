@@ -57,7 +57,12 @@ const feeCycleSchema = new mongoose.Schema({
   cycleStart: { type: String, required: true },
   cycleEnd: { type: String, required: true },
 
-  amountDue: { type: Number, required: true }
+  amountDue: { type: Number, required: true },
+
+  // Delete दबाई गई Cycle को असल में मिटाने की जगह "मिटी हुई" चिह्नित किया जाता है।
+  // पूरी तरह मिटा देने पर अगली बार Fee card खुलते ही सिस्टम उसे फिर बना देता था
+  // (क्योंकि तारीख के हिसाब से वो बनती ही है) — चिह्न रहने से वो कभी वापस नहीं बनती।
+  deleted: { type: Boolean, default: false }
 
 }, { timestamps: true });
 
