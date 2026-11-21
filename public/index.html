@@ -941,6 +941,34 @@
 
 
         <!-- =================================================
+             ATTENDANCE SECTION (active batch students only)
+        ================================================== -->
+
+        <div
+            class="student-profile-section"
+            id="attendanceProfileSection"
+            style="display:none;"
+        >
+
+            <div class="student-profile-section-title">
+                Attendance
+            </div>
+
+            <div class="student-profile-section-body">
+
+                <div class="att-profile-head">
+                    <input type="month" id="attProfileMonth" onchange="refreshAttendanceProfileBlock()">
+                    <button class="btn-light small-btn" onclick="openAttendanceCalendar()">📅 Monthly Calendar</button>
+                </div>
+
+                <div id="attProfileSummary">-</div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
              FEE SECTION
         ================================================== -->
 
@@ -983,34 +1011,6 @@
                 id="assessmentCardBody"
             >
                 -
-            </div>
-
-        </div>
-
-
-        <!-- =================================================
-             ATTENDANCE SECTION (active batch students only)
-        ================================================== -->
-
-        <div
-            class="student-profile-section"
-            id="attendanceProfileSection"
-            style="display:none;"
-        >
-
-            <div class="student-profile-section-title">
-                Attendance
-            </div>
-
-            <div class="student-profile-section-body">
-
-                <div class="att-profile-head">
-                    <input type="month" id="attProfileMonth" onchange="refreshAttendanceProfileBlock()">
-                    <button class="btn-light small-btn" onclick="openAttendanceCalendar()">📅 Monthly Calendar</button>
-                </div>
-
-                <div id="attProfileSummary">-</div>
-
             </div>
 
         </div>
